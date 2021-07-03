@@ -44,7 +44,7 @@ public class Driver {
             settledcost = DriverApplication.applicationContext.getBean(taxi.external.PaymentService.class)
                 .settleCost(this.getCallId());
             } catch  (Exception e) {
-                throw new Exception("Product Sold Out - Exception Raised");
+                throw new Exception("Exception Raised when getting settledcost");
             }
 
         } 
