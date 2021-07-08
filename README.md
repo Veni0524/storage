@@ -37,9 +37,6 @@
 6. 탑승이 완료되면 택시기사는 call상태정보를 Completed로 변경하고 요금을 정산받는다										
    이 때 상태정보가 Completed로 변경되면 payment(안전거래)에서 callId로 등록된 요금을 정산받는다 (동기화)
 
-										
-![image](https://user-images.githubusercontent.com/84304023/124903028-803c2c80-e01e-11eb-8109-4a2220cf1199.png)
-
 
 
 
