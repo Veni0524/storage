@@ -422,32 +422,30 @@ http GET http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazon
 ```
 # PaymentService.java
 
-package storagerent.external;
 
-<import문 생략>
+package taxi.external;
 
-@FeignClient(name="payment", url="${prop.payment.url}")
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+//import java.util.Date;
+
+// @FeignClient(name="Payment", url="http://Payment:8083")         //Delete
+@FeignClient(name="payment", url="${feign.client.url.paymentUrl}") //Insert
 public interface PaymentService {
-    @RequestMapping(method= RequestMethod.POST, path="/payments")
-    public void approvePayment(@RequestBody Payment payment);
+
+    @RequestMapping(method= RequestMethod.GET, path="/payments")
+    public void savePayment(@RequestBody Payment payment);
+
 }
 
-# StorageService.java
-
-package storagerent.external;
-
-<import문 생략>
-
-@FeignClient(name="Storage", url="${prop.storage.url}")
-public interface StorageService {
-
-    @RequestMapping(method=RequestMethod.GET, path="/check/chkAndReqReserve")
-    public boolean chkAndReqReserve(@RequestParam("storageId") long storageId);
-}
 
 ```
 
 - 예약 요청을 받은 직후(@PostPersist) 가능상태 확인 및 결제를 동기(Sync)로 요청하도록 처리
+
 ```
 # Reservation.java (Entity)
 
