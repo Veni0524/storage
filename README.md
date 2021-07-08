@@ -1,10 +1,6 @@
 # 콜택시
-![image](https://user-images.githubusercontent.com/84304043/122708383-07f01000-d297-11eb-8352-20f9f9ce6b81.png)
 
-# 창고대여(StorageRent)-2조
 
-본 예제는 MSA/DDD/Event Storming/EDA 를 포괄하는 분석/설계/구현/운영 전단계를 커버하도록 구성한 예제입니다.
-이는 클라우드 네이티브 애플리케이션의 개발에 요구되는 체크포인트들을 통과하기 위한 예시 답안을 포함합니다.
 - 체크포인트 : https://workflowy.com/s/assessment-check-po/T5YrzcMewfo4J6LW
 
 
@@ -37,19 +33,11 @@
 3. 정상적으로 요금이 등록되면 tax driver 에게 호출정보를 등록한다.(비동기)
 4. Call 정보가 등록되면 report 로 callId 별로 요금정보가 업데이트 된다. (CQRS)
 5. tax driver 는 승객을 태우면, callId 별로 call 상태정보를 Accepted 로 변경하고 운행을 시작한다. 
-   이 때 callId 별로 상태정보는 변경된다. (비동기)
-6. 
+   이 때 callId 별로 상태정보는 변경된다. (비동기)  callId별 상태정보가 변경되면 report로 callID별 요금정보가 업데이트된다 (CQRS)
+6. 탑승이 완료되면 택시기사는 call상태정보를 Completed로 변경하고 요금을 정산받는다										
+   이 때 상태정보가 Completed로 변경되면 payment(안전거래)에서 callId로 등록된 요금을 정산받는다 (동기화)
 
-1) 승객(customer)가 customerId, 요금(cost)=500, destination='jungja' 로 택시를 호출한다										
-2) 택시를 호출하면 동기화로 payment(안전거래)로 cost=500이 등록된다 (동기화)										
-   정상적으로 요금이 등록되면 taxi driver에게 호출정보를 등록한다 (비동기)										
-   call정보가 등록되면 report로 callId별 요금정보가 업데이트된다 (CQRS)										
-3) 택시기사는 승객을 태우면 callId별로 call상태정보를 Accepted로 변경하고 운전을 시작한다										
-   이 때 callid별로 상태정보는 변경된다 (비동기)										
-   callId별 상태정보가 변경되면 report로 callID별 요금정보가 업데이트된다 (CQRS)										
-4) 탑승이 완료되면 택시기사는 call상태정보를 Completed로 변경하고 요금을 정산받는다										
-    이 때 상태정보가 Completed로 변경되면 payment(안전거래)에서 callId로 등록된 요금을 정산받는다 (동기화)										
-   그리고 call상태정보가 Completed로 변경되면 report의 상태정보도 Completed로 변경되고 settled에 요금이 반영된다										
+										
 ![image](https://user-images.githubusercontent.com/84304023/124903028-803c2c80-e01e-11eb-8109-4a2220cf1199.png)
 
 
@@ -132,45 +120,26 @@
 
 # 분석/설계
 
-## AS-IS 조직 (Horizontally-Aligned)
- ![image](https://user-images.githubusercontent.com/86210580/122710021-5f43af80-d29a-11eb-8efb-5813e583bf93.png)
-
-
-
-
-
-## TO-BE 조직 (Vertically-Aligned)  
- ![image](https://user-images.githubusercontent.com/86210580/122710096-8e5a2100-d29a-11eb-8eed-be99860c4150.png)
-
-
-
-
-
-
-
 ## Event Storming 결과
-* MSAEz 로 모델링한 이벤트스토밍 결과:  http://www.msaez.io/#/storming/2JEsE4KtipYy9F381lCC7sUjsks1/every/2b0c3bb2d0aa2ac1adcb24844b1ad182
+* MSAEz 로 모델링한 이벤트스토밍 결과:  http://www.msaez.io/#/storming/GC1SWGUh8lSswBk8IBzQrKOwUxo2/mine/83801f8fcac356fe76550944be3e8284
 
 
 ### 이벤트 도출
-
-![image](https://user-images.githubusercontent.com/84304023/122713236-5950cd00-d2a0-11eb-8610-b845021180f8.png)
-
-
 ### 부적격 이벤트 탈락
-![image](https://user-images.githubusercontent.com/84304023/122713329-7e454000-d2a0-11eb-807c-f96b54a2aa37.png)
+![image](https://user-images.githubusercontent.com/84304023/124904250-c776ed00-e01f-11eb-86c3-bc9c1d97fbd6.png)
+
 
     - 과정중 도출된 잘못된 도메인 이벤트들을 걸러내는 작업을 수행함
-        - 등록시>StorageSelected, 예약시>Resevationindormed :  UI 의 이벤트이지, 업무적인 의미의 이벤트가 아니라서 제외
+     
 
 ### 액터, 커맨드 부착하여 읽기 좋게
-![image](https://user-images.githubusercontent.com/84304023/122713526-c6646280-d2a0-11eb-97d3-04d04314ccde.png)
-
+![image](https://user-images.githubusercontent.com/84304023/124904305-d3fb4580-e01f-11eb-9ef6-27fa7fdfb0cf.png)
 ### 어그리게잇으로 묶기
-![image](https://user-images.githubusercontent.com/84304023/122714889-0a586700-d2a3-11eb-88e3-af7d4a8ee84c.png)
+![image](https://user-images.githubusercontent.com/84304023/124904358-e37a8e80-e01f-11eb-8271-d476be987090.png)
 
 
-    - 창고(Storage), 예약(Reservation), 결제(Payment), 리뷰(Review) 은 그와 연결된 command 와 event 들에 의하여 트랜잭션이 유지되어야 하는 단위로 그들 끼리 묶어줌
+
+   - command 와 event 들에 의하여 트랜잭션이 유지되어야 하는 단위로 그들 끼리 묶어줌
 
 ### 바운디드 컨텍스트로 묶기
 ![image](https://user-images.githubusercontent.com/84304023/122714472-522abe80-d2a2-11eb-8756-3479aa73d505.png)
