@@ -565,19 +565,72 @@ http GET http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazon
 
 
 ## 폴리그랏 퍼시스턴스 적용
-```
-Message Sevices : hsqldb사용
-```
-![image](https://user-images.githubusercontent.com/84304043/122845081-dda55d80-d33d-11eb-8d9f-a4e17735574e.png)
-```
-Message이외  Sevices : h2db사용
-```
-![image](https://user-images.githubusercontent.com/84304043/122845106-ed24a680-d33d-11eb-9124-aed5d9e7285b.png)
+
+
 
 ## Maven 빌드시스템 라이브러리 추가( pom.xml 설정변경 H2DB → HSQLDB) 
-![image](https://user-images.githubusercontent.com/84304043/122845179-0fb6bf80-d33e-11eb-879a-1e6e8964ebb3.png)
+
 
 # 운영
+
+각각의 KUBECTL 명령어로 운영에 빌드하였습니다. 
+
+
+1.AWS Configure 수행
+
+2.ESK생성
+eksctl create cluster --name user26-eks --version 1.17 --nodegroup-name standard-workers --node-type t3.medium --nodes 4 --nodes-min 1 --nodes-max 4
+
+3.AWS 클러스터 토큰 가져오기
+aws eks --region eu-west-3 update-kubeconfig --name user26-eks
+
+4. 매트릭스 서버 설치
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.5.0/components.yaml
+
+5. 각 서비스 MVN
+mvn package -Dmaven.test.skip=trun
+
+6. ECR 에서 Repository 생성
+![image](https://user-images.githubusercontent.com/84304023/124966025-bc42b200-e05d-11eb-903e-a0373d6981f5.png)
+
+
+7. AWS 컨테이너 레지스트리 로그인
+docker login --username AWS -p $(aws ecr get-login-password --region eu-west-3) 879772956301.dkr.ecr.eu-west-3.amazonaws.com/
+
+8. 이름 정의 
+kubectl create ns taxi
+
+
+9. 도커 이미지 생성 ( 각서비스별로 생성)
+
+docker build -t 879772956301.dkr.ecr.eu-west-3.amazonaws.com/payment:v1 .
+
+10. 도커 이미지 푸쉬
+docker push 879772956301.dkr.ecr.eu-west-3.amazonaws.com/payment:v1
+
+11. 이미지가 레파지토리에 있는지 확인 
+![image](https://user-images.githubusercontent.com/84304023/124966413-42f78f00-e05e-11eb-9406-8c5d0c53d2f3.png)
+
+
+12.앞서 생산한 taxi 에 pod 를 띄움
+kubectl create deploy payment --image 879772956301.dkr.ecr.eu-west-3.amazonaws.com/payment:v1 -n taxi
+
+13. 서비스 확인 
+kubectl get all -n taxi
+
+![image](https://user-images.githubusercontent.com/84304023/124966711-923dbf80-e05e-11eb-8f44-5b44c0ce183d.png)
+
+14. payment 서비스를 올림 
+
+kubectl expose deploy payment --type="ClusterIP" --port=8080 --namespace=taxi
+
+![image](https://user-images.githubusercontent.com/84304023/124966795-ac779d80-e05e-11eb-8e54-27947774fd23.png)
+
+15. 운영 반영 완료 후 서비스 
+
+![image](https://user-images.githubusercontent.com/84304023/124966838-b6999c00-e05e-11eb-93ed-9ad9dd2387f3.png)
+
+
 
 
 ## CI/CD 설정
