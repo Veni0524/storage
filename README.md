@@ -41,24 +41,6 @@
 ![image](https://user-images.githubusercontent.com/84304023/124903028-803c2c80-e01e-11eb-8109-4a2220cf1199.png)
 
 
-1. 관리자가 창고정보를 등록/수정/삭제한다. 
-2. 고객이 창고를 선택하여 예약한다.
-3. 예약과 동시에 결제가 진행된다. 
-4. 예약이 되면 예약 내역이 전달된다.
-5. 고객이 예약을 취소할 수 있다. 
-6. 예약사항이 취소될 경우 취소 내역이 전달된다.
-7. 고객이 대여한 정보 및 예약상태 등을 한 화면에서 확인할 수 있다. (viewpage)
-8. 고객이 예약했던 창고에 대해 후기를 남길 수 있다. 
-
-비기능적 요구사항
-1. 트랜잭션
-    1. 결제가 되지 않은 예약 건은 성립되지 않아야 한다.  (Sync 호출)
-1. 장애격리
-    1. 창고 등록 및 메시지 전송 기능이 수행되지 않더라도 예약은 365일 24시간 받을 수 있어야 한다  Async (event-driven), Eventual Consistency
-    1. 예약 시스템이 과중되면 사용자를 잠시동안 받지 않고 잠시 후에 하도록 유도한다  Circuit breaker, fallback
-1. 성능
-    1. 모든 창고에 대한 정보 및 예약 상태 등을 한번에 확인할 수 있어야 한다  (CQRS)
-    1. 예약의 상태가 바뀔 때마다 메시지로 알림을 줄 수 있어야 한다  (Event driven)
 
 
 # 체크포인트
@@ -137,62 +119,18 @@
 ### 어그리게잇으로 묶기
 ![image](https://user-images.githubusercontent.com/84304023/124904358-e37a8e80-e01f-11eb-8271-d476be987090.png)
 
-
-
    - command 와 event 들에 의하여 트랜잭션이 유지되어야 하는 단위로 그들 끼리 묶어줌
 
 ### 바운디드 컨텍스트로 묶기
-![image](https://user-images.githubusercontent.com/84304023/122714472-522abe80-d2a2-11eb-8756-3479aa73d505.png)
+![image](https://user-images.githubusercontent.com/84304023/124904741-45d38f00-e020-11eb-8350-356ab0580db4.png)
 
-
-
-    - 도메인 서열 분리 
-        - Core Domain:  reservation, storage : 없어서는 안될 핵심 서비스이며, 연간 Up-time SLA 수준을 99.999% 목표, 배포주기는 reservation 의 경우 1주일 1회 미만, storage 의 경우 1개월 1회 미만
-        - Supporting Domain:   message, viewpage : 경쟁력을 내기위한 서비스이며, SLA 수준은 연간 60% 이상 uptime 목표, 배포주기는 각 팀의 자율이나 표준 스프린트 주기가 1주일 이므로 1주일 1회 이상을 기준으로 함.
-        - General Domain:   payment : 결제서비스로 3rd Party 외부 서비스를 사용하는 것이 경쟁력이 높음 
 
 ### 폴리시 부착 (괄호는 수행주체, 폴리시 부착을 둘째단계에서 해놔도 상관 없음. 전체 연계가 초기에 드러남)
-![image](https://user-images.githubusercontent.com/84304023/122714619-88683e00-d2a2-11eb-9800-66750eb6defd.png)
-
+![image](https://user-images.githubusercontent.com/84304023/124904812-5a178c00-e020-11eb-9023-e0438a038796.png)
 ### 폴리시의 이동과 컨텍스트 매핑 (점선은 Pub/Sub, 실선은 Req/Resp)
+![image](https://user-images.githubusercontent.com/84304023/124904848-63a0f400-e020-11eb-9c83-977e1310636f.png)
 
-![image](https://user-images.githubusercontent.com/84304023/122714837-f3197980-d2a2-11eb-89c8-3dbd182114a9.png)
-
-### 완성된 1차 모형
-
-![image](https://user-images.githubusercontent.com/86210580/122715446-d6ca0c80-d2a3-11eb-99e8-0ab788d1d1dc.png)
-
-    - View Model 추가
-
-### 1차 완성본에 대한 기능적/비기능적 요구사항을 커버하는지 검증
-
-![image](https://user-images.githubusercontent.com/86210580/122716388-2826cb80-d2a5-11eb-937f-60958e97994a.png)
-
-
-    - 관리자가 임대할 창고를 등록/수정/삭제한다.(ok) -> Puple line
-    - 고객이 창고를 선택하여 예약한다.(ok) -> Green line
-    - 예약과 동시에 결제가 진행된다.(ok) -> Green line
-    - 예약이 되면 예약 내역(Message)이 전달된다.(?)
-    - 고객이 예약을 취소할 수 있다.(ok) -> Red line
-    - 예약 사항이 취소될 경우 취소 내역(Message)이 전달된다.(?)
-    - 창고에 대한 후기(review)를 남길 수 있다.(ok) -> Puple line
-    - 전체적인 창고에 대한 정보 및 예약 상태 등을 한 화면에서 확인 할 수 있다.(View-green Sticker 추가로 ok)
-    
-### 모델 수정
-
-![image](https://user-images.githubusercontent.com/86210580/122729232-e5202480-d2b3-11eb-90f3-c612cebbea5d.png)
-
-    
-    - 수정된 모델은 모든 요구사항을 커버함.
-
-### 비기능 요구사항에 대한 검증
-
-![image](https://user-images.githubusercontent.com/84304023/122727848-74c4d380-d2b2-11eb-8e3a-c35d2f672ea9.png)
-
-- 마이크로 서비스를 넘나드는 시나리오에 대한 트랜잭션 처리
-- 고객 예약시 결제처리:  결제가 완료되지 않은 예약은 절대 받지 않는다고 결정하여, ACID 트랜잭션 적용. 예약 완료시 사전에 창고 상태를 확인하는 것과 결제처리에 대해서는 Request-Response 방식 처리 (1)
-- 결제 완료시 manager 연결 및 예약처리:  reservation 에서 storage 마이크로서비스로 예약요청이 전달되는 과정에 있어서 storage 마이크로 서비스가 별도의 배포주기를 가지기 때문에 Eventual Consistency 방식으로 트랜잭션 처리함. (2)
-- 나머지 모든 inter-microservice 트랜잭션: 예약상태, 후기처리 등 모든 이벤트에 대해 데이터 일관성의 시점이 크리티컬하지 않은 모든 경우가 대부분이라 판단, Eventual Consistency 를 기본으로 채택함.(3)
+(요구사항 검증해야함...)
 
 ## MSAEz 결과
  - 아래와 같이 모델링한 후 소스를 생성함
