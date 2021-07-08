@@ -176,8 +176,9 @@
 
 
 - 실제로 view 페이지를 조회에서 정보 확인이 가능하다
-```
-   http GET localhost:8088/storageviews
+  로컬 테스트 결과 
+  
+  
 ```
 ![뷰](https://user-images.githubusercontent.com/84304043/122842865-227ac580-d339-11eb-906e-2873cd375b04.PNG)
 
