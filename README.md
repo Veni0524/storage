@@ -127,12 +127,15 @@
 ### 폴리시의 이동과 컨텍스트 매핑 (점선은 Pub/Sub, 실선은 Req/Resp)
 ![image](https://user-images.githubusercontent.com/84304023/124904848-63a0f400-e020-11eb-9c83-977e1310636f.png)
 
-(요구사항 검증해야함...)
+요구사항 점검 후 callist 빠진 것 확인 
+![image](https://user-images.githubusercontent.com/84304023/124905523-17a27f00-e021-11eb-9ddd-a0a17f3a0636.png)
+
 
 ## MSAEz 결과
  - 아래와 같이 모델링한 후 소스를 생성함
 
-![image](https://user-images.githubusercontent.com/84304043/122867849-1c024300-d365-11eb-9ca8-f00c0fb0cf87.png)
+![image](https://user-images.githubusercontent.com/84304023/124905145-b5497e80-e020-11eb-8c3b-83921a0ff52e.png)
+
 
 
 ## 헥사고날 아키텍처 다이어그램 도출
