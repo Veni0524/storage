@@ -69,4 +69,4 @@ spring:
 feign:
   client:
     url:
-      paymentUrl: http://payment:8080
+      paymentUrl: http://payment:8080
