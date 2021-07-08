@@ -176,192 +176,144 @@
 
 
 - 실제로 view 페이지를 조회에서 정보 확인이 가능하다
-  로컬 테스트 결과 
-  
-  
-```
-![뷰](https://user-images.githubusercontent.com/84304043/122842865-227ac580-d339-11eb-906e-2873cd375b04.PNG)
 
+ ![image](https://user-images.githubusercontent.com/84304023/124941897-1f284f00-e046-11eb-8a6f-ab46ad5cdaf4.png)
+![image](https://user-images.githubusercontent.com/84304023/124941920-23546c80-e046-11eb-8c08-26795bd3604e.png)
+![image](https://user-images.githubusercontent.com/84304023/124941942-264f5d00-e046-11eb-99a2-ffa0e2caaf4d.png)
+
+  
 
 ## API 게이트웨이
-      1. gateway 스프링부트 App을 추가 후 application.yaml내에 각 마이크로 서비스의 routes 를 추가하고 gateway 서버의 포트를 8080 으로 설정함
+gateway 스프링부트 App을 추가 후 application.yaml내에 각 마이크로 서비스의 routes 를 추가하고 gateway 서버의 포트를 8080 으로 설정함
        
-          - application.yml 예시
-            ```
-	spring:
-	  profiles: docker
-	  cloud:
-	    gateway:
-	      routes:
-		- id: payment
-		  uri: http://payment:8081
-		  predicates:
-		    - Path=/payments/** 
-		- id: storage
-		  uri: http://storage:8082
-		  predicates:
-		    - Path=/storages/**, /reviews/**, /check/**
-		- id: reservation
-		  uri: http://reservation:8083
-		  predicates:
-		    - Path=/reservations/** 
-		- id: message
-		  uri: http://message:8084
-		  predicates:
-		    - Path=/messages/** 
-		- id: viewpage
-		  uri: http://viewpage:8085
-		  predicates:
-		    - Path= /storageviews/**
-	      globalcors:
-		corsConfigurations:
-		  '[/**]':
-		    allowedOrigins:
-		      - "*"
-		    allowedMethods:
-		      - "*"
-		    allowedHeaders:
-		      - "*"
-		    allowCredentials: true
-
-	server:
-	  port: 8080       
-            ```
-
          
-      2. Kubernetes용 Deployment.yaml 을 작성하고 Kubernetes에 Deploy를 생성함
-          - Deployment.yaml 예시
-          
+ 1.  application.yml   
+ ```  
+spring:
+  profiles: docker
+  cloud:
+    gateway:
+      routes:
+        - id: call
+          uri: http://call:8080
+          predicates:
+            - Path=/calls/** 
+        - id: driver
+          uri: http://driver:8080
+          predicates:
+            - Path=/drivers/** 
+        - id: payment
+          uri: http://payment:8080
+          predicates:
+            - Path=/payments/** 
+        - id: callList
+          uri: http://callList:8080
+          predicates:
+            - Path= /callLists/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
 
-            ```
-	apiVersion: apps/v1
-	kind: Deployment
-	metadata:
-	  name: gateway
-	  namespace: storagerent
-	  labels:
-	    app: gateway
-	spec:
-	  replicas: 1
-	  selector:
-	    matchLabels:
-	      app: gateway
-	  template:
-	    metadata:
-	      labels:
-		app: gateway
-	    spec:
-	      containers:
-		- name: gateway
-		  image: 740569282574.dkr.ecr.ap-northeast-1.amazonaws.com/user02-gateway:v1
-		  ports:
-		    - containerPort: 8080
-            ```               
-            
+server:
+  port: 8080    
+        
+ ``` 
+ 
+  
+ 3.  gateway 생성하고 expose 시 type을 LoadBalancer 로 설정  
+   
+   ```
+	kubectl create deploy gateway --image 879772956301.dkr.ecr.eu-west-3.amazonaws.com/gateway:v1 -n taxi
+	kubectl expose deploy gateway --type="LoadBalancer" --port=8080 --namespace=taxi
 
-            ```
-            Deploy 생성
-            kubectl apply -f deployment.yaml
-            ```     
-          - Kubernetes에 생성된 Deploy. 확인
-            
-![image](https://user-images.githubusercontent.com/84304043/122843390-4d194e00-d33a-11eb-82b9-d156fce642d0.png)
-	    
-            
-      3. Kubernetes용 Service.yaml을 작성하고 Kubernetes에 Service/LoadBalancer을 생성하여 Gateway 엔드포인트를 확인함. 
-          - Service.yaml 예시
-          
-            ```
-            apiVersion: v1
-              kind: Service
-              metadata:
-                name: gateway
-                namespace: storagerent
-                labels:
-                  app: gateway
-              spec:
-                ports:
-                  - port: 8080
-                    targetPort: 8080
-                selector:
-                  app: gateway
-                type:
-                  LoadBalancer           
-            ```             
+   ```     
 
-           
-            ```
-            Service 생성
-            kubectl apply -f service.yaml            
-            ```             
-            
-            
-          - API Gateay 엔드포인트 확인
-           
-            ```
-            Service  및 엔드포인트 확인 
-            kubectl get svc -n storagerent           
-            ```                
+![image](https://user-images.githubusercontent.com/84304023/124944396-3c5e1d00-e048-11eb-8c2b-75c3b01312c6.png)
 
-![image](https://user-images.githubusercontent.com/84304043/122770160-229aa700-d2e0-11eb-9f85-b6fcb8cabe0e.png)
-
+    
 
 # Correlation
 
-창고대여 프로젝트에서는 PolicyHandler에서 처리 시 어떤 건에 대한 처리인지를 구별하기 위한 Correlation-key 구현을 
-이벤트 클래스 안의 변수로 전달받아 서비스간 연관된 처리를 정확하게 구현하고 있습니다. 
+승객이 택시를 호출했을 때, 운전기사가 호출을 수락하여 승객을 태울 때, 운행종료후 운전기사가 콜을 종료처리할 때 
+calllist 상태가 변경된다. 
 
-아래의 구현 예제를 보면
+1) 승객이 택시를 호출한다
 
-예약(Reservation)을 하면 동시에 연관된 창고(Storage), 결제(Payment) 등의 서비스의 상태가 적당하게 변경이 되고,
-예약건의 취소를 수행하면 다시 연관된 창고(Storage), 결제(Payment) 등의 서비스의 상태값 등의 데이터가 적당한 상태로 변경되는 것을
-확인할 수 있습니다.
+ http POST http://localhost:8081/calls customerId=1 destination=junja cost=500
+ 
+![image](https://user-images.githubusercontent.com/84304023/124944723-86df9980-e048-11eb-9672-777804c3898a.png)
 
-- 창고등록
-```
-http POST http://localhost:8088/storages description="BigStorage" price=200000 storageStatus="available"
-```  
-![image](https://user-images.githubusercontent.com/84304043/122844125-eb59e380-d33b-11eb-9a85-1a892021ca0d.png)
-- 예약등록
-```
-http POST localhost:8088/reservations storageId=1 price=200000 reservationStatus="reqReserve"
-```  
-![image](https://user-images.githubusercontent.com/84304043/122843690-0415c980-d33b-11eb-9558-c423faa1bd42.png)
-- 예약 후 - 창고 상태
-```
-http GET http://localhost:8088/storages/1
-```  
-![image](https://user-images.githubusercontent.com/84304043/122843724-1d1e7a80-d33b-11eb-8a52-8b7f772df2e3.png)
-- 예약 후 - 예약 상태
-```
-http GET http://localhost:8088/reservations/1
-```  
-![image](https://user-images.githubusercontent.com/84304043/122843763-31fb0e00-d33b-11eb-83f6-140191ec1a6d.png)
-- 예약 후 - 결제 상태
-```
-http GET http://localhost:8088/payments/1
-``` 
-![image](https://user-images.githubusercontent.com/84304043/122843798-43441a80-d33b-11eb-92c4-160c77f6f3ef.png)
-- 예약 취소
-```
-http PATCH localhost:8088/reservations/1 storageId=1 price=200000 reservationStatus="reqCancel"
-``` 
-![image](https://user-images.githubusercontent.com/84304043/122843840-57881780-d33b-11eb-88fe-61d8055ff1e0.png)
-- 예약 취소 후 - 창고 상태
-```
-http GET http://localhost:8088/storages/1
-``` 
-![image](https://user-images.githubusercontent.com/84304043/122843892-6ec70500-d33b-11eb-9663-e4c894dff60b.png)
-- 예약 취소 후 - 예약 상태
-```
-http GET http://localhost:8088/reservations/1
-``` 
-![image](https://user-images.githubusercontent.com/84304043/122843932-856d5c00-d33b-11eb-88a9-921c14d97ed0.png)
-- 예약 취소 후 - 결제 상태
-```
-http GET http://localhost:8088/payments/1
-``` 
-![image](https://user-images.githubusercontent.com/84304043/122843963-95853b80-d33b-11eb-8e0a-4831fa73a5b4.png)
+1-1) 택시를 호출하면 payment에 callId별로 요금 500이 등록되는데(동기) 이를 확인한다
+
+http GET http://localhost:8083/payments/2
+
+![image](https://user-images.githubusercontent.com/84304023/124944827-9b239680-e048-11eb-96cc-eb491c259e02.png)
+
+1-2) driver정보도 확인한다
+
+http GET http://localhost:8082/drivers/2
+
+![image](https://user-images.githubusercontent.com/84304023/124946395-f43ffa00-e049-11eb-8c73-b1338b706a26.png)
+
+1-3) callist 화면도 확인한다.
+
+http GET http://localhost:8084/callLists/2
+
+![image](https://user-images.githubusercontent.com/84304023/124944954-b7273800-e048-11eb-954f-9f30efabaa16.png)
+
+
+2) 운전기사가 호출을 수락하여 승객을 태운다.
+
+http PATCH http://localhost:8082/drivers/2 status=Accepted
+
+
+![image](https://user-images.githubusercontent.com/84304023/124945032-c5755400-e048-11eb-90e4-f3fd580f55d4.png)
+
+
+2-1)승객의 상태가 변경된다. 
+
+http GET http://localhost:8081/calls/2
+
+
+![image](https://user-images.githubusercontent.com/84304023/124945082-cefebc00-e048-11eb-9338-a1837678e131.png)
+
+
+2-2)Calllist 상태가 변경된다.
+
+http GET http://localhost:8084/callLists/2
+
+![image](https://user-images.githubusercontent.com/84304023/124945134-d8882400-e048-11eb-8479-76b805cdc38d.png)
+
+
+3) 탑승이 종료되면 운전기사가 상태를 변경한다.
+
+http PATCH http://localhost:8082/drivers/2 status=Completed
+
+![image](https://user-images.githubusercontent.com/84304023/124945204-e473e600-e048-11eb-861d-39ec707a1c1c.png)
+
+
+3-1) 승객의 상태가 변경된다.
+
+http GET http://localhost:8081/calls/2 
+
+![image](https://user-images.githubusercontent.com/84304023/124945229-eb9af400-e048-11eb-9981-65deed563ae0.png)
+
+3-2) callList 상태가 변경된다. 
+
+http GET http://localhost:8084/callLists/2
+
+![image](https://user-images.githubusercontent.com/84304023/124945278-f786b600-e048-11eb-8a97-7ec14c64d417.png)
+
+
+
+
 
 
 ## DDD 의 적용
@@ -369,126 +321,103 @@ http GET http://localhost:8088/payments/1
 - 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다. (예시는 storage 마이크로 서비스). 이때 가능한 현업에서 사용하는 언어 (유비쿼터스 랭귀지)를 그대로 사용하려고 노력했다. 현실에서 발생가능한 이벤트에 의하여 마이크로 서비스들이 상호 작용하기 좋은 모델링으로 구현을 하였다.
 
 ```
-package storagerent;
+package taxi;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
 
 @Entity
-@Table(name="Storage_table")
-public class Storage {
+@Table(name="Payment_table")
+public class Payment {
 
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
-    private Long storageId;
-    private String storageStatus;
-    private String description;
-    private Long reviewCnt;
-    private String lastAction;
-    private Float price;
+    private Long id;
+    private Long callId;
+    private Integer cost;
+    private String destination;
 
     @PostPersist
     public void onPostPersist(){
-        StorageRegistered storageRegistered = new StorageRegistered();
-        BeanUtils.copyProperties(this, storageRegistered);
-        storageRegistered.publishAfterCommit();
+        RegisteredDestinationInfo registeredDestinationInfo = new RegisteredDestinationInfo();
+        BeanUtils.copyProperties(this, registeredDestinationInfo);
+        registeredDestinationInfo.publishAfterCommit();
+
+
     }
 
-    @PostUpdate
-    public void onPostUpdate(){
-        if("modify".equals(lastAction) || "review".equals(lastAction)) {
-            StorageModified storageModified = new StorageModified();
-            BeanUtils.copyProperties(this, storageModified);
-            storageModified.publishAfterCommit();
-        }
-        if("reserved".equals(lastAction)) {
-            StorageReserved storageReserved = new StorageReserved();
-            BeanUtils.copyProperties(this, storageReserved);
-            storageReserved.publishAfterCommit();
-        }
-        if("cancelled".equals(lastAction)) {
-            StorageCancelled storageCancelled = new StorageCancelled();
-            BeanUtils.copyProperties(this, storageCancelled);
-            storageCancelled.publishAfterCommit();
-        }
+
+    public Long getId() {
+        return id;
     }
 
-    @PreRemove
-    public void onPreRemove(){
-        StorageDeleted storageDeleted = new StorageDeleted();
-        BeanUtils.copyProperties(this, storageDeleted);
-        storageDeleted.publishAfterCommit();
+    public void setId(Long id) {
+        this.id = id;
     }
-    public Long getStorageId() {
-        return storageId;
+    public Long getCallId() {
+        return callId;
     }
-    public void setStorageId(Long storageId) {
-        this.storageId = storageId;
+
+    public void setCallId(Long callId) {
+        this.callId = callId;
     }
-    public String getStorageStatus() {
-        return storageStatus;
+    public Integer getCost() {
+        return cost;
     }
-    public void setStorageStatus(String storageStatus) {
-        this.storageStatus = storageStatus;
+
+    public void setCost(Integer cost) {
+        this.cost = cost;
     }
-    public String getDescription() {
-        return description;
+    public String getDestination() {
+        return destination;
     }
-    public void setDescription(String description) {
-        this.description = description;
+
+    public void setDestination(String destination) {
+        this.destination = destination;
     }
-    public Long getReviewCnt() {
-        return reviewCnt;
-    }
-    public void setReviewCnt(Long reviewCnt) {
-        this.reviewCnt = reviewCnt;
-    }
-    public String getLastAction() {
-        return lastAction;
-    }
-    public void setLastAction(String lastAction) {
-        this.lastAction = lastAction;
-    }
-    public Float getPrice() {
-        return price;
-    }
-    public void setPrice(Float price) {
-        this.price = price;
-    }
+
+
+
+
 }
+
 
 
 ```
 - Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용하였다
 ```
-package storagerent;
+package taxi;
+
+import java.util.Optional;
 
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 
-@RepositoryRestResource(collectionResourceRel="storages", path="storages")
-public interface StorageRepository extends PagingAndSortingRepository<Storage, Long>{
+@RepositoryRestResource(collectionResourceRel="payments", path="payments")
+public interface PaymentRepository extends PagingAndSortingRepository<Payment, Long>{
+
+    Optional<Payment> findById(Long id);
 
 }
+
 ```
 - 적용 후 REST API 의 테스트
-```
-# storage 서비스의 대여창고 등록
-http POST http://localhost:8088/storages description="storage1" price=200000 storageStatus="available"
-  
-# reservation 서비스의 창고 예약 요청
-http POST http:localhost:8088/reservations storageId=1 price=200000 reservationStatus="reqReserve"
+  승객이 택시를 콜하면 운전기사(Driver)가 콜 확인 가능 
+http POST http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazonaws.com:8080/calls customerId=10 destination=suji cost=100 
+http GET http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazonaws.com:8080/drivers/3
 
-# reservation 서비스의 예약 상태 확인
-http GET http://localhost:8088/reservations/1
 
-```
+![image](https://user-images.githubusercontent.com/84304023/124948366-944a5300-e04b-11eb-9f40-d6004465fe8f.png)
+![image](https://user-images.githubusercontent.com/84304023/124948378-98767080-e04b-11eb-8484-ad9f03df28d2.png)
+
+
+
 
 ## 동기식 호출(Sync) 과 Fallback 처리
 
-분석 단계에서의 조건 중 하나로 예약 시 창고(storage) 간의 예약 가능 상태 확인 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다. 또한 예약(reservation) -> 결제(payment) 서비스도 동기식으로 처리하기로 하였다.
+- 승객이 택시를 콜하면 payment 에 콜정보와 금액이 동기식으로 저장됨  
+- Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출
 
-- 창고, 결제 서비스를 호출하기 위하여 Stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
 
 ```
 # PaymentService.java
