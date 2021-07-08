@@ -413,11 +413,10 @@ http GET http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazon
 
 
 
-## 동기식 호출(Sync) 과 Fallback 처리
+## 동기식 호출(Sync) 
 
 - 승객이 택시를 콜하면 payment 에 콜정보와 금액이 동기식으로 저장됨  
 - Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출
-
 
 ```
 # PaymentService.java
@@ -444,153 +443,127 @@ public interface PaymentService {
 
 ```
 
-- 예약 요청을 받은 직후(@PostPersist) 가능상태 확인 및 결제를 동기(Sync)로 요청하도록 처리
+- 
 
 ```
-# Reservation.java (Entity)
+# Payment.java (Entity)
 
+   
     @PostPersist
     public void onPostPersist(){
-    
-        //------------------
-        // 예약이 들어온 경우
-        //------------------
+        RegisteredDestinationInfo registeredDestinationInfo = new RegisteredDestinationInfo();
+        BeanUtils.copyProperties(this, registeredDestinationInfo);
+        registeredDestinationInfo.publishAfterCommit();
 
-        // 해당 Storage가 Available한 상태인지 체크
-       boolean result = ReservationApplication.applicationContext.getBean(storagerent.external.StorageService.class).chkAndReqReserve(this.getStorageId());
-        System.out.println("######## Storage Available Check Result : " + result);
-        
-        if(result) { 
 
-            // 예약 가능한 상태인 경우(Available)
-
-            //----------------------------
-            // PAYMENT 결제 진행 (POST방식)
-            //----------------------------
-            storagerent.external.Payment payment = new storagerent.external.Payment();
-            payment.setReservationId(this.getReservationId());
-            payment.setStorageId(this.getStorageId());
-            payment.setPaymentStatus("paid");
-            payment.setPrice(this.price);
-            ReservationApplication.applicationContext.getBean(storagerent.external.PaymentService.class)
-                .approvePayment(payment);
-
-            //----------------------------------
-            // 이벤트 발행 --> ReservationCreated
-            //----------------------------------
-            ReservationCreated reservationCreated = new ReservationCreated();
-            BeanUtils.copyProperties(this, reservationCreated);
-            reservationCreated.publishAfterCommit();
-        }
     }
-```
-
-- 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 결제 시스템이 장애가 나면 주문도 못받는다는 것을 확인:
-
 
 ```
-# 결제 (pay) 서비스를 잠시 내려놓음 (ctrl+c)
 
-# 대여창고 등록
-http POST http://localhost:8088/storages description="storage1" price=200000 storageStatus="available"
+승객이 콜 호출 후 payment 에 동기식으로 데이터 발생확인
 
-# Payment 서비스 종료 후 창고대여
-http POST localhost:8088/reservations storageId=1 price=200000 reservationStatus="reqReserve"
+![image](https://user-images.githubusercontent.com/84304023/124963265-8c45df80-e05a-11eb-94ba-2f5ee7eaf0c2.png)
+![image](https://user-images.githubusercontent.com/84304023/124963271-8fd96680-e05a-11eb-9050-d4a5311cb243.png)
 
-# Payment 서비스 실행 후 창고대여
-http POST localhost:8088/reservations storageId=1 price=200000 reservationStatus="reqReserve"
-
-# 창고대여 확인 
-http GET http://localhost:8088/reservations/1  
-```
-
-- 또한 과도한 요청시에 서비스 장애가 도미노 처럼 벌어질 수 있다. (서킷브레이커, 폴백 처리는 운영단계에서 설명한다.)
 
 
 
 
 ## 비동기식 호출 / 시간적 디커플링 / 장애격리 / 최종 (Eventual) 일관성 테스트
 
+운전기사가 승객을 태우고 callId 별로 call 의 상태를 Accepted로 변경하고 운전을 시작한다.
 
-결제가 이루어진 후에 숙소 시스템의 상태가 업데이트 되고, 예약 시스템의 상태가 업데이트 되며, 예약 및 취소 메시지가 전송되는 시스템과의 통신 행위는 비동기식으로 처리한다.
- 
-- 이를 위하여 결제가 승인되면 결제가 승인 되었다는 이벤트를 카프카로 송출한다. (Publish)
- 
+
+
 ```
-# Payment.java
-
-package storagerent;
+# Driver.java
+package taxi;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeansException;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Date;
 
 @Entity
-@Table(name="Payment_table")
-public class Payment {
+@Table(name="Driver_table")
+public class Driver {
 
-    ....
+....
 
-    @PostPersist
-    public void onPostPersist(){
-        ////////////////////////////
-        // 결제 승인 된 경우
-        ////////////////////////////
-
-        // 이벤트 발행 -> PaymentApproved
-        PaymentApproved paymentApproved = new PaymentApproved();
-        BeanUtils.copyProperties(this, paymentApproved);
-        paymentApproved.publishAfterCommit();
-    }
+ @PostUpdate
+    public void onPostUpdate() throws Exception {
     
-    ....
+    UpdatedStatus updatedStatus = new UpdatedStatus();
+        this.setCallId(callId);
+        BeanUtils.copyProperties(this, updatedStatus);
+        updatedStatus.publishAfterCommit();
+	
+ }	
+    
+    
+# call  - PolicyHandler.java
+package taxi;
+
+import taxi.config.kafka.KafkaProcessor;
+
+import java.util.Optional;
+
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.stream.annotation.StreamListener;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PolicyHandler{
+    @Autowired CallRepository callRepository;
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverUpdatedStatus_UpdateStatus(@Payload UpdatedStatus updatedStatus){
+
+        if(!updatedStatus.validate()) return;
+
+        System.out.println("\n\n##### listener UpdateStatus : " + updatedStatus.toJson() + "\n\n");
+
+        // Sample Logic //
+        // Call call = new Call();
+
+        Optional<Call> callOptional =  callRepository.findById(updatedStatus.getCallId());
+        Call call = callOptional.get();
+        call.setStatus(updatedStatus.getStatus());
+
+        callRepository.save(call);
+            
+    }
+
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whatever(@Payload String eventString){}
+
+
 }
-```
-
-- 예약 시스템에서는 결제 승인 이벤트에 대해서 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler 를 구현한다:
-
-```
-# Reservation.java
-
-package storagerent;
-
-    @PostUpdate
-    public void onPostUpdate(){
-    
-        ....
-
-        if("reserved".equals(this.getReservationStatus())) {
-
-            ////////////////////
-            // 예약 확정된 경우
-            ////////////////////
-
-            // 이벤트 발생 --> ReservationConfirmed
-            ReservationConfirmed reservationConfirmed = new ReservationConfirmed();
-            BeanUtils.copyProperties(this, reservationConfirmed);
-            reservationConfirmed.publishAfterCommit();
-        }
-        
-        ....
-        
-    }
 
 ```
 
-그 외 메시지 서비스는 예약/결제와 완전히 분리되어있으며, 이벤트 수신에 따라 처리되기 때문에, 메시지 서비스가 유지보수로 인해 잠시 내려간 상태 라도 예약을 받는데 문제가 없다.
+운전기사가 승객을 태우고 callId 별로 call 의 상태를 Accepted로 변경하고 운전을 시작한다
 
-```
-# 메시지 서비스 (message) 를 잠시 내려놓음 (ctrl+c)
+http PATCH http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazonaws.com:8080/drivers/3 status=Accepted
 
-# 대여창고 등록
-http POST http://localhost:8088/storages description="msg1" price=200000 storageStatus="available"
+![image](https://user-images.githubusercontent.com/84304023/124963665-0d9d7200-e05b-11eb-8621-4c3090cfab83.png)
 
-# Message 서비스 종료 후 창고대여
-http POST localhost:8088/reservations storageId=5 price=200000 reservationStatus="reqReserve"   
 
-# Message 서비스와 상관없이 창고대여 성공여부 확인
-http GET http://localhost:8088/reservations/2
+http GET http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazonaws.com:8080/calls/6
 
-```
+![image](https://user-images.githubusercontent.com/84304023/124963677-11c98f80-e05b-11eb-88dd-4c8789e5da39.png)
+
+
+
+
+
 ## 폴리그랏 퍼시스턴스 적용
 ```
 Message Sevices : hsqldb사용
