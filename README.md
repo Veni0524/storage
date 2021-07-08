@@ -156,26 +156,26 @@
 
 ## CQRS
 
-운전기사가 자신의 업무랭을 점검할 수 있는 화면을 CQRS 로 구현한다.
+회사가 수익과 콜수를 점검할 수 있는 화면을 CQRS 로 구현한다.
 비동기식으로 처리되어 발행된 이벤트 기반 카프카를 통해 수신/처리되어 별도 TABLE 에 관리한다. 
 
 승객이 콜을 하면 승객 ID/ 금액/ 목적지 / 상태 = Called 가 업데이트 된다. 
 운전기사가 수락을 하고 승객을 태우면 상태가 accetped 로 업데이트 된다. 
 운행이 끝나고 운전기사가 종료처리 하면 정산 금액이 업데이트 되고 상태가 completed 로 변경된다.
 
+테이블 모델링 (callList)
+![image](https://user-images.githubusercontent.com/84304023/124918416-f85f1e00-e02f-11eb-8c47-553f5124b2b5.png)
+ 
+- viewpage MSA ViewHandler 를 통해 구현 (이벤트 발생 시, Pub/Sub 기반으로 별도 callList 테이블에 저장)
+- call 생성시 승객 id/금액/목적지/상태=called 가 생성됨
+![image](https://user-images.githubusercontent.com/84304023/124919004-a9fe4f00-e030-11eb-992b-ea14c31d0700.png)
+- 운전기사의 운행이 시작되어 상태가 accepted 로 업데이트 되면 뷰도 업데이트 됨
+- 운전기사의 운행이 완료되어 상태를 completed 로 업데이트 되면 뷰의 상태값과 settle 필드도 업데이트  
+![image](https://user-images.githubusercontent.com/84304023/124919111-c8644a80-e030-11eb-9363-ef01a922085c.png)
 
-창고(Storage) 의 사용가능 여부, 리뷰 및 예약/결재 등 총 Status 에 대하여 고객(Customer)이 조회 할 수 있도록 CQRS 로 구현하였다.
-- storage, review, reservation, payment 개별 Aggregate Status 를 통합 조회하여 성능 Issue 를 사전에 예방할 수 있다.
-- 비동기식으로 처리되어 발행된 이벤트 기반 Kafka 를 통해 수신/처리 되어 별도 Table 에 관리한다
-- Table 모델링 (StorageView)
- 
-  ![image](https://user-images.githubusercontent.com/84304043/122712630-2fe37180-d29f-11eb-9ad4-1bfe12fbeb25.png)
- 
-- viewpage MSA ViewHandler 를 통해 구현 ("StorageRegistered" 이벤트 발생 시, Pub/Sub 기반으로 별도 Storageview 테이블에 저장)
- ![image](https://user-images.githubusercontent.com/84304043/122714557-6f5f8d00-d2a2-11eb-9e82-d811f3e1ab3e.png)
- ![image](https://user-images.githubusercontent.com/84304043/122714566-71c1e700-d2a2-11eb-92e9-51ef24aa46ae.png)
- 
-- 실제로 view 페이지를 조회해 보면 모든 storage에 대한 전반적인 예약 상태, 결제 상태, 리뷰 건수 등의 정보를 종합적으로 알 수 있다
+
+
+- 실제로 view 페이지를 조회에서 정보 확인이 가능하다
 ```
    http GET localhost:8088/storageviews
 ```
