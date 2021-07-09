@@ -635,47 +635,6 @@ kubectl expose deploy payment --type="ClusterIP" --port=8080 --namespace=taxi
 
 ## CI/CD 설정
 
-각 구현체들은 각자의 source repository 에 구성되었고, 사용한 CI/CD는 buildspec.yml을 이용한 AWS codebuild를 사용하였습니다.
-
-- CodeBuild 프로젝트를 생성하고 AWS_ACCOUNT_ID, KUBE_URL, KUBE_TOKEN 환경 변수 세팅을 한다
-```
-SA 생성
-kubectl apply -f eks-admin-service-account.yml
-```
-![image](https://user-images.githubusercontent.com/84304043/122844500-c154f100-d33c-11eb-9ec0-5eb0fa3540d6.png)
-```
-Role 생성
-kubectl apply -f eks-admin-cluster-role-binding.yml
-```
-![image](https://user-images.githubusercontent.com/84304043/122844538-d6ca1b00-d33c-11eb-818b-5a51404265c1.png)
-```
-Token 확인
-kubectl -n kube-system get secret
-kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep eks-admin | awk '{print $1}')
-```
-![image](https://user-images.githubusercontent.com/86210580/122849832-34fbfb80-d347-11eb-9f6d-b1e379b3e1cf.png)
-
-```
-buildspec.yml 파일 
-마이크로 서비스 storage의 yml 파일 이용하도록 세팅
-```
-![image](https://user-images.githubusercontent.com/84304043/122844673-201a6a80-d33d-11eb-8a52-a0fad02951d9.png)
-
-- codebuild 실행
-```
-codebuild 프로젝트 및 빌드 이력
-```
-![image](https://user-images.githubusercontent.com/84304043/122846416-bdc36900-d340-11eb-9558-cad08d2615f2.png)
-![image](https://user-images.githubusercontent.com/84304043/122861596-a2fdee00-d35a-11eb-9d73-7ff537c9e332.png)
-
-- codebuild 빌드 내역 (Message 서비스 세부)
-
-![image](https://user-images.githubusercontent.com/84304043/122846449-cd42b200-d340-11eb-8a33-aeff63915d61.png)
-
-- codebuild 빌드 내역 (전체 이력 조회)
-
-![image](https://user-images.githubusercontent.com/84304043/122846462-d5025680-d340-11eb-9914-b12b82a74ff5.png)
-
 
 
 ## 동기식 호출 / 서킷 브레이킹 / 장애격리
@@ -766,13 +725,18 @@ kubectl apply -f kubernetes/deployment.yml
 
 
 # Self-healing (Liveness Probe)
-- storage deployment.yml 파일 수정 
-```
-콘테이너 실행 후 /tmp/healthy 파일을 만들고 
-90초 후 삭제
-livenessProbe에 'cat /tmp/healthy'으로 검증하도록 함
-```
-![image](https://user-images.githubusercontent.com/84304043/122863309-80210900-d35d-11eb-8e07-8113c4ca6af9.png)
 
-- kubectl describe pod storage -n storagerent 실행으로 확인(X)
+
+- payment deployment.yml 파일 수정 
+```
+
+/tmp/healthy 파일이 존재하는지 확인하는 설정파일이다.
+livenessProbe에 'cat /tmp/healthy'으로 검증하도록 함
+파일이 존재하지 않을 경우, 정상 작동에 문제가 있다고 판단되어 kubelet에 의해 자동으로 컨테이너가 재시작 된다
+
+```
+![image](https://user-images.githubusercontent.com/84304023/125010662-e9b14f00-e0a1-11eb-8f32-8fb33aee03d5.png)
+
+
+- kubectl describe pod payment -n taxi  실행은 못함
 
