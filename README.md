@@ -643,8 +643,20 @@ kubectl get deploy payment -w -n taxi
 
 ## Config map 
 
-![image](https://user-images.githubusercontent.com/84304023/125014652-0dc45e80-e0a9-11eb-86a8-b232bef3d9ff.png)
+1.컨피그맵 생성
 
+kubectl create configmap hello-cm --from-literal=language=java
+kubectl get cm
+kubectl get cm hello-cm -o yaml
+
+
+![image](https://user-images.githubusercontent.com/84304023/125027006-8551b800-e0c0-11eb-8420-b009882d25cc.png)
+
+2. 도커라이징 
+aws ecr create-repository --repository-name config --image-scanning-configuration scanOnPush=true --region eu-west-3
+....
+
+이미지 안올라가서 실패..
 
 # Self-healing (Liveness Probe)
 
