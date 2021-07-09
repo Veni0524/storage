@@ -748,6 +748,10 @@ kubectl apply -f kubernetes/deployment.yml
 (--------------------------------------------------------------------내가 한거 아님 삭제할것..)
 
 
+## Config map 
+
+![image](https://user-images.githubusercontent.com/84304023/125014652-0dc45e80-e0a9-11eb-86a8-b232bef3d9ff.png)
+
 
 # Self-healing (Liveness Probe)
 
