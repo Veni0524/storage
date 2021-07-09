@@ -31,11 +31,12 @@
 1. 승객이 택시를 호출한다. 택시 호출할 때 목적지와 요금을 입력한다.
 2. 택시를 호출하면 동기화로 payment(안전거래)로 cost=500 이 등록된다. (동기화)
 3. 정상적으로 요금이 등록되면 tax driver 가 호출정보를 받는다. (비동기)
-4. Call 정보가 등록되면 report 로 callId 별로 요금정보가 업데이트 된다. (CQRS)
+4. Call 정보가 등록되면 report 로 callId 별로 요금정보와 상태(Called)가 업데이트 된다. (CQRS)
 5. tax driver 는 승객을 태우면, callId 별로 call 상태정보를 Accepted 로 변경하고 운행을 시작한다. 
-   이 때 callId 별로 상태정보는 변경된다. (비동기)  callId별 상태정보가 변경되면 report로 callID별 요금정보가 업데이트된다 (CQRS)
+   이 때 Call의 상태정보도 변경된다. (비동기)  callId별 상태정보가 변경되면 report로 callID별 상태정보가 업데이트된다 (CQRS)
 6. 탑승이 완료되면 택시기사는 call상태정보를 Completed로 변경한다.									
    이 때 상태정보가 Completed로 변경되면 payment(안전거래)에서 callId로 등록된 요금을 정산받는다 (동기화)
+   Calllist의 정산필드가 업데이트 되고, 상태값도 Completed 로 변경된다. 
 
 비기능적 요구사항 
 1. calllist 에 callid 별로 상태정보가 없데이트 된다. 
@@ -645,18 +646,13 @@ kubectl get deploy payment -w -n taxi
 
 1.컨피그맵 생성
 
-kubectl create configmap hello-cm --from-literal=language=java
-kubectl get cm
-kubectl get cm hello-cm -o yaml
+kubectl apply -f configmap.yml
+![image](https://user-images.githubusercontent.com/84304023/125029729-0f038480-e0c5-11eb-9853-0daae2559779.png)
 
+2.Deployment.yml
+![image](https://user-images.githubusercontent.com/84304023/125030089-820cfb00-e0c5-11eb-8e6f-d0811cb905f2.png)
 
-![image](https://user-images.githubusercontent.com/84304023/125027006-8551b800-e0c0-11eb-8420-b009882d25cc.png)
-
-2. 도커라이징 
-aws ecr create-repository --repository-name config --image-scanning-configuration scanOnPush=true --region eu-west-3
-....
-
-이미지 안올라가서 실패..
+...
 
 # Self-healing (Liveness Probe)
 
