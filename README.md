@@ -469,7 +469,7 @@ public interface PaymentService {
 
 
 
-## 비동기식 호출 / 시간적 디커플링 / 장애격리 / 최종 (Eventual) 일관성 테스트
+## 비동기식 호출 
 
 운전기사가 승객을 태우고 callId 별로 call 의 상태를 Accepted로 변경하고 운전을 시작한다.
 
@@ -635,8 +635,29 @@ kubectl expose deploy payment --type="ClusterIP" --port=8080 --namespace=taxi
 
 ## CI/CD 설정
 
+## 모니터링
+1. 메트릭 서버 설치 및 설치확인
+
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.5.0/components.yaml
+
+![image](https://user-images.githubusercontent.com/84304023/125011799-16fefc80-e0a4-11eb-9fa3-1b5814630aaa.png)
 
 
+2. 모니터링 
+ 
+kubectl get nodes
+kubectl describe nodes
+
+![image](https://user-images.githubusercontent.com/84304023/125012209-ca67f100-e0a4-11eb-9622-ce3974fd777c.png)
+![image](https://user-images.githubusercontent.com/84304023/125012265-dfdd1b00-e0a4-11eb-8090-5627568a7b3b.png)
+....
+![image](https://user-images.githubusercontent.com/84304023/125012313-f2575480-e0a4-11eb-9a3a-dcaa58d54812.png)
+
+
+
+
+
+(--------------------------------------------------------------------내가 한거 아님 삭제할것..)
 ## 동기식 호출 / 서킷 브레이킹 / 장애격리
 
 * 서킷 브레이킹: Hystrix 사용하여 구현함
@@ -722,6 +743,10 @@ kubectl apply -f kubernetes/deployment.yml
 ```
 
 - 동일한 시나리오로 재배포 한 후 Availability 확인(X)
+
+
+(--------------------------------------------------------------------내가 한거 아님 삭제할것..)
+
 
 
 # Self-healing (Liveness Probe)
