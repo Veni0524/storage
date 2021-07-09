@@ -31,7 +31,7 @@
 1. 승객이 택시를 호출한다. 택시 호출할 때 목적지와 요금을 입력한다.
 2. 택시를 호출하면 동기화로 payment(안전거래)로 cost=500 이 등록된다. (동기화)
 3. 택시를 호출하면  tax driver 가 호출정보를 받는다. (비동기)
-4. Call 정보가 등록되면 report 로 callId 별로 요금정보와 상태(Called)가 업데이트 된다. (CQRS)
+4. 택시를 호출하면 report 로 callId 별로 요금정보와 상태(Called)가 업데이트 된다. (CQRS)
 5. tax driver 는 승객을 태우면, callId 별로 call 상태정보를 Accepted 로 변경하고 운행을 시작한다. 
    이 때 Call의 상태정보도 변경된다. (비동기)  callId별 상태정보가 변경되면 report로 callID별 상태정보가 업데이트된다 (CQRS)
 6. 탑승이 완료되면 택시기사는 call상태정보를 Completed로 변경한다.									
