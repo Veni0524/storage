@@ -1,4 +1,4 @@
-# 콜택시
+# 배민라이더스 ( 배달대행 )
 
 
 - 체크포인트 : https://workflowy.com/s/assessment-check-po/T5YrzcMewfo4J6LW
@@ -6,7 +6,7 @@
 
 # Table of contents
 
-- [예제 - 콜택시](#---)
+- [배민라이더스( 배달대행 )](#---)
   - [서비스 시나리오](#서비스-시나리오)
   - [체크포인트](#체크포인트)
   - [분석/설계](#분석설계)
@@ -25,21 +25,21 @@
 
 # 서비스 시나리오
 
-콜택시 커버하기
+배민라이더스 커버하기
 
 기능적/ 요구사항
-1. 승객이 택시를 호출한다. 택시 호출할 때 목적지와 요금을 입력한다.
-2. 택시를 호출하면 동기화로 payment(안전거래)로 cost=500 이 등록된다. (동기화)
-3. 택시를 호출하면  tax driver 가 호출정보를 받는다. (비동기)
-4. 택시를 호출하면 report 로 callId 별로 요금정보와 상태(Called)가 업데이트 된다. (CQRS)
-5. tax driver 는 승객을 태우면, callId 별로 call 상태정보를 Accepted 로 변경하고 운행을 시작한다. 
-   이 때 Call의 상태정보도 변경된다. (비동기)  callId별 상태정보가 변경되면 report로 callID별 상태정보가 업데이트된다 (CQRS)
-6. 탑승이 완료되면 택시기사는 call상태정보를 Completed로 변경한다.									
-   이 때 상태정보가 Completed로 변경되면 payment(안전거래)에서 callId로 등록된 요금을 정산받는다 (동기화)
-   Calllist의 정산필드가 업데이트 되고, 상태값도 Completed 로 변경된다. 
+1. 음식점에서 배민파트너(배달원)을 호출한다. 배민파트너를 호출할 때 목적지와 배달대행비를 입력한다.
+2. 배민파트너를 호출하면 동기화로 payment로 cost가 등록된다. (동기화)
+3. 배민파트너를 호출하면 배민파트너가 호출정보를 받는다. (비동기)
+4. 배민파트너를 호출하면 report 로 deliveryId 별로 요금정보와 상태(Called)가 업데이트 된다. (CQRS)
+5. 배민파트너는 음식을 픽업하면, callId 별로 call 상태정보를 Picked 로 변경하고 운행을 시작한다. 
+   이 때 배달의 상태정보도 변경된다. (비동기)  deliveryId별 상태정보가 변경되면 report로 deliveryID별 상태정보가 업데이트된다 (CQRS)
+6. 배달이 완료되면 배민파트너는 delivery상태정보를 Completed로 변경한다.									
+   이 때 상태정보가 Completed로 변경되면 payment에서 deliveryId로 등록된 요금을 정산받는다 (동기화)
+   deliverylist의 정산필드가 업데이트 되고, 상태값도 Completed 로 변경된다. 
 
 비기능적 요구사항 
-1. calllist 에 callid 별로 상태정보가 없데이트 된다. 
+1. deliverylist 에 deliveryid 별로 상태정보가 없데이트 된다. 
 2. driver 서비스 되지 않더라도 call 서비스는 지속된다. (장애격리)
 
 
