@@ -31,7 +31,7 @@
 1. 음식점에서 배민파트너(배달원)을 호출한다. 배민파트너를 호출할 때 목적지와 배달대행비를 입력한다.
 2. 배민파트너를 호출하면 동기화로 payment로 cost가 등록된다. (동기화)
 3. 배민파트너를 호출하면 배민파트너가 호출정보를 받는다. (비동기)
-4. 배민파트너를 호출하면 report 로 deliveryId 별로 요금정보와 상태(Called)가 업데이트 된다. (CQRS)
+4. 배민파트너를 호출하면 report로 deliveryId 별로 요금정보와 상태(Called)가 업데이트 된다. (CQRS)
 5. 배민파트너는 음식을 픽업하면, callId 별로 call 상태정보를 Picked 로 변경하고 운행을 시작한다. 
    이 때 배달의 상태정보도 변경된다. (비동기)  deliveryId별 상태정보가 변경되면 report로 deliveryID별 상태정보가 업데이트된다 (CQRS)
 6. 배달이 완료되면 배민파트너는 delivery상태정보를 Completed로 변경한다.									
@@ -48,12 +48,13 @@
 # 분석/설계
 
 ## Event Storming 결과
-* MSAEz 로 모델링한 이벤트스토밍 결과:  http://www.msaez.io/#/storming/GC1SWGUh8lSswBk8IBzQrKOwUxo2/mine/83801f8fcac356fe76550944be3e8284
+* MSAEz 로 모델링한 이벤트스토밍 결과:  https://labs.msaez.io/#/storming/FjUK5yZ3Lqh0BNV0qwgUEWoJ5L13/5f2edd182ef5b2792b07c9e880c82c64
 
 
 ### 이벤트 도출
 ### 부적격 이벤트 탈락
-![image](https://user-images.githubusercontent.com/84304023/124904250-c776ed00-e01f-11eb-86c3-bc9c1d97fbd6.png)
+![image](https://user-images.githubusercontent.com/88864460/135231443-a988dbae-025d-47c2-ad9d-58d3f6c5fec8.png)
+
 
 
     - 과정중 도출된 잘못된 도메인 이벤트들을 걸러내는 작업을 수행함
