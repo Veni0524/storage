@@ -62,35 +62,34 @@
 
 ### 액터, 커맨드 부착하여 읽기 좋게
 
-![image](https://user-images.githubusercontent.com/84304023/124904305-d3fb4580-e01f-11eb-9ef6-27fa7fdfb0cf.png)
+![image](https://user-images.githubusercontent.com/88864460/135238814-3f95e89c-064c-4e1f-838d-a9d4a4ac542e.png)
 
 ### 어그리게잇으로 묶기
-![image](https://user-images.githubusercontent.com/84304023/124904358-e37a8e80-e01f-11eb-8271-d476be987090.png)
+![image](https://user-images.githubusercontent.com/88864460/135238753-89b6eb7b-fd15-4e8b-b328-efb25ae5795c.png)
 
    - command 와 event 들에 의하여 트랜잭션이 유지되어야 하는 단위로 그들 끼리 묶어줌
    
 
 ### 바운디드 컨텍스트로 묶기
-![image](https://user-images.githubusercontent.com/84304023/124904741-45d38f00-e020-11eb-8350-356ab0580db4.png)
-
+![image](https://user-images.githubusercontent.com/88864460/135238864-26f0dde7-8a33-465f-aece-c484d8b4aac8.png)
 
 ### 폴리시 부착 (괄호는 수행주체, 폴리시 부착을 둘째단계에서 해놔도 상관 없음. 전체 연계가 초기에 드러남)
-![image](https://user-images.githubusercontent.com/84304023/124904812-5a178c00-e020-11eb-9023-e0438a038796.png)
+![image](https://user-images.githubusercontent.com/88864460/135238925-69e7d71c-1c61-4947-86a9-5e219bad576b.png)
 
 
 ### 폴리시의 이동과 컨텍스트 매핑 (점선은 Pub/Sub, 실선은 Req/Resp)
-![image](https://user-images.githubusercontent.com/84304023/124904848-63a0f400-e020-11eb-9c83-977e1310636f.png)
+![image](https://user-images.githubusercontent.com/88864460/135238983-b11dd354-a942-46b1-b518-f47c72954629.png)
 
 
 
-요구사항 점검 후 callist 빠진 것 확인 
-![image](https://user-images.githubusercontent.com/84304023/124905523-17a27f00-e021-11eb-9ddd-a0a17f3a0636.png)
+요구사항 점검 후 deliverylist 빠진 것 확인 
+![image](https://user-images.githubusercontent.com/88864460/135239087-4525c285-d7a4-4462-85cd-8b23f548ca6e.png)
 
 
 ## MSAEz 결과
  - 아래와 같이 모델링한 후 소스를 생성함
 
-![image](https://user-images.githubusercontent.com/88864460/135233786-a6c481af-2f85-492c-9d87-eea264b8544c.png)
+![image](https://user-images.githubusercontent.com/88864460/135239205-cbc59387-9e01-4dd8-a2db-5878fcd9c713.png)
 
 
 
