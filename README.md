@@ -90,7 +90,7 @@
 ## MSAEz 결과
  - 아래와 같이 모델링한 후 소스를 생성함
 
-![image](https://user-images.githubusercontent.com/84304023/124905145-b5497e80-e020-11eb-8c3b-83921a0ff52e.png)
+![image](https://user-images.githubusercontent.com/88864460/135233786-a6c481af-2f85-492c-9d87-eea264b8544c.png)
 
 
 
