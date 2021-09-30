@@ -273,31 +273,31 @@ http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.am
 - 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다. (예시는 storage 마이크로 서비스). 이때 가능한 현업에서 사용하는 언어 (유비쿼터스 랭귀지)를 그대로 사용하려고 노력했다. 현실에서 발생가능한 이벤트에 의하여 마이크로 서비스들이 상호 작용하기 좋은 모델링으로 구현을 하였다.
 
 ```
-package taxi;
+package delivery;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
+import java.util.List;
+import java.util.Date;
 
 @Entity
-@Table(name="Payment_table")
-public class Payment {
+@Table(name="Payments_table")
+public class Payments {
 
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;
-    private Long callId;
-    private Integer cost;
+    private Long deliveryId;
     private String destination;
+    private Integer cost;
 
     @PostPersist
     public void onPostPersist(){
-        RegisteredDestinationInfo registeredDestinationInfo = new RegisteredDestinationInfo();
-        BeanUtils.copyProperties(this, registeredDestinationInfo);
-        registeredDestinationInfo.publishAfterCommit();
-
+        SettledCost settledCost = new SettledCost();
+        BeanUtils.copyProperties(this, settledCost);
+        settledCost.publishAfterCommit();
 
     }
-
 
     public Long getId() {
         return id;
@@ -306,19 +306,12 @@ public class Payment {
     public void setId(Long id) {
         this.id = id;
     }
-    public Long getCallId() {
-        return callId;
+    public Long getDeliveryId() {
+        return deliveryId;
     }
 
-    public void setCallId(Long callId) {
-        this.callId = callId;
-    }
-    public Integer getCost() {
-        return cost;
-    }
-
-    public void setCost(Integer cost) {
-        this.cost = cost;
+    public void setDeliveryId(Long deliveryId) {
+        this.deliveryId = deliveryId;
     }
     public String getDestination() {
         return destination;
@@ -326,6 +319,13 @@ public class Payment {
 
     public void setDestination(String destination) {
         this.destination = destination;
+    }
+    public Integer getCost() {
+        return cost;
+    }
+
+    public void setCost(Integer cost) {
+        this.cost = cost;
     }
 
 
@@ -338,7 +338,7 @@ public class Payment {
 ```
 - Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용하였다
 ```
-package taxi;
+package delivery;
 
 import java.util.Optional;
 
@@ -346,51 +346,50 @@ import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 
 @RepositoryRestResource(collectionResourceRel="payments", path="payments")
-public interface PaymentRepository extends PagingAndSortingRepository<Payment, Long>{
+public interface PaymentsRepository extends PagingAndSortingRepository<Payments, Long>{
 
-    Optional<Payment> findById(Long id);
-
+    Optional<Payments> findById(Long id);
 }
+
 
 ```
 - 적용 후 REST API 의 테스트
  
- 승객이 택시를 콜하면 운전기사(Driver)가 콜 확인 가능 
-http POST http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazonaws.com:8080/calls customerId=10 destination=suji cost=100 
+ 음식점에서 배달원을 요청하면 배달원(Driver)이 요청 확인 가능 
+http POST http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries customerId=1 destination=seoul cost=20000
 
-http GET http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazonaws.com:8080/drivers/3
+http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries
 
 
-![image](https://user-images.githubusercontent.com/84304023/124948366-944a5300-e04b-11eb-9f40-d6004465fe8f.png)
-![image](https://user-images.githubusercontent.com/84304023/124948378-98767080-e04b-11eb-8484-ad9f03df28d2.png)
+![image](https://user-images.githubusercontent.com/88864460/135445059-fd8d98a5-b7c6-4f21-a451-b0fa75ca98d5.png)
+![image](https://user-images.githubusercontent.com/88864460/135445170-bd0769ed-698e-471a-8181-1123996b84c5.png)
 
 
 
 
 ## 동기식 호출(Sync) 
 
-- 승객이 택시를 콜하면 payment 에 콜정보와 금액이 동기식으로 저장됨  
+- 음식점에서 배달원을 호출하면 payment 에 배달정보와 금액이 동기식으로 저장됨  
 - Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출
 
 ```
 # PaymentService.java
 
 
-package taxi.external;
+package delivery.external;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
-//import java.util.Date;
+import java.util.Date;
 
-// @FeignClient(name="Payment", url="http://Payment:8083")         //Delete
-@FeignClient(name="payment", url="${feign.client.url.paymentUrl}") //Insert
-public interface PaymentService {
-
+@FeignClient(name="payments", url="${feign.client.url.paymentUrl}") //Insert
+public interface PaymentsService {
     @RequestMapping(method= RequestMethod.GET, path="/payments")
-    public void savePayment(@RequestBody Payment payment);
+    public void savePayments(@RequestBody Payments payments);
 
 }
 
@@ -405,19 +404,18 @@ public interface PaymentService {
    
     @PostPersist
     public void onPostPersist(){
-        RegisteredDestinationInfo registeredDestinationInfo = new RegisteredDestinationInfo();
-        BeanUtils.copyProperties(this, registeredDestinationInfo);
-        registeredDestinationInfo.publishAfterCommit();
-
+        SettledCost settledCost = new SettledCost();
+        BeanUtils.copyProperties(this, settledCost);
+        settledCost.publishAfterCommit();
 
     }
 
 ```
 
-승객이 콜 호출 후 payment 에 동기식으로 데이터 발생확인
+음식점에서 배달원 요청 후 payment 에 동기식으로 데이터 발생확인
 
-![image](https://user-images.githubusercontent.com/84304023/124963265-8c45df80-e05a-11eb-94ba-2f5ee7eaf0c2.png)
-![image](https://user-images.githubusercontent.com/84304023/124963271-8fd96680-e05a-11eb-9050-d4a5311cb243.png)
+![image](https://user-images.githubusercontent.com/88864460/135445059-fd8d98a5-b7c6-4f21-a451-b0fa75ca98d5.png)
+![image](https://user-images.githubusercontent.com/88864460/135447785-ee013bb2-7dc1-42fe-9ff6-724347ba43f9.png)
 
 
 
@@ -425,7 +423,7 @@ public interface PaymentService {
 
 ## 비동기식 호출 
 
-운전기사가 승객을 태우고 callId 별로 call 의 상태를 Accepted로 변경하고 운전을 시작한다.
+배달원이 음식을 싣고 deliveryId 별로 delivery 의 상태를 Accepted로 변경하고 운전을 시작한다.
 
 
 
@@ -450,21 +448,22 @@ public class Driver {
  @PostUpdate
     public void onPostUpdate() throws Exception {
     
-    UpdatedStatus updatedStatus = new UpdatedStatus();
-        this.setCallId(callId);
-        BeanUtils.copyProperties(this, updatedStatus);
-        updatedStatus.publishAfterCommit();
+    UpdateStatus updateStatus = new UpdateStatus();
+        this.setDeliveryId(deliveryId);
+        BeanUtils.copyProperties(this, updateStatus);
+        updateStatus.publishAfterCommit();
 	
  }	
     
     
-# call  - PolicyHandler.java
-package taxi;
+# delivery  - PolicyHandler.java
+package delivery;
 
-import taxi.config.kafka.KafkaProcessor;
+import delivery.config.kafka.KafkaProcessor;
 
 import java.util.Optional;
 
+import delivery.config.kafka.KafkaProcessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -474,24 +473,27 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class PolicyHandler{
-    @Autowired CallRepository callRepository;
+    @Autowired DeliveryRepository deliveryRepository;
 
     @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverUpdatedStatus_UpdateStatus(@Payload UpdatedStatus updatedStatus){
+    public void wheneverUpdateStatus_UpdatedStatus(@Payload UpdateStatus updateStatus){
 
-        if(!updatedStatus.validate()) return;
+        if(!updateStatus.validate()) return;
 
-        System.out.println("\n\n##### listener UpdateStatus : " + updatedStatus.toJson() + "\n\n");
+        System.out.println("\n\n##### listener UpdatedStatus : " + updateStatus.toJson() + "\n\n");
+
+
 
         // Sample Logic //
-        // Call call = new Call();
+        // Delivery delivery = new Delivery();
+        // deliveryRepository.save(delivery);
+        Optional<Delivery> deliveryOptional = deliveryRepository.findById(updateStatus.getDeliveryId());
+        Delivery delivery = deliveryOptional.get();
+        delivery.setStatus(updateStatus.getStatus());
 
-        Optional<Call> callOptional =  callRepository.findById(updatedStatus.getCallId());
-        Call call = callOptional.get();
-        call.setStatus(updatedStatus.getStatus());
+        deliveryRepository.save(delivery);
 
-        callRepository.save(call);
-            
+
     }
 
 
@@ -503,16 +505,14 @@ public class PolicyHandler{
 
 ```
 
-운전기사가 승객을 태우고 callId 별로 call 의 상태를 Accepted로 변경하고 운전을 시작한다
+http PATCH http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/drivers/1 status="Accepted"
 
-http PATCH http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazonaws.com:8080/drivers/3 status=Accepted
-
-![image](https://user-images.githubusercontent.com/84304023/124963665-0d9d7200-e05b-11eb-8621-4c3090cfab83.png)
+![image](https://user-images.githubusercontent.com/88864460/135445729-02b7a388-9bd1-437d-b6b7-d004b522af55.png)
 
 
-http GET http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazonaws.com:8080/calls/6
+http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries
 
-![image](https://user-images.githubusercontent.com/84304023/124963677-11c98f80-e05b-11eb-88dd-4c8789e5da39.png)
+![image](https://user-images.githubusercontent.com/88864460/135445900-f7cb994e-6919-4a4d-8c90-338983337ad0.png)
 
 
 
