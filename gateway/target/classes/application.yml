@@ -1,0 +1,74 @@
+server:
+  port: 8088
+
+---
+
+spring:
+  profiles: default
+  cloud:
+    gateway:
+      routes:
+        - id: delivery
+          uri: http://localhost:8081
+          predicates:
+            - Path=/deliveries/** 
+        - id: driver
+          uri: http://localhost:8082
+          predicates:
+            - Path=/drivers/** 
+        - id: payment
+          uri: http://localhost:8083
+          predicates:
+            - Path=/payments/** 
+        - id: deliveryList
+          uri: http://localhost:8084
+          predicates:
+            - Path= /deliveryLists/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+
+---
+
+spring:
+  profiles: docker
+  cloud:
+    gateway:
+      routes:
+        - id: delivery
+          uri: http://delivery:8080
+          predicates:
+            - Path=/deliveries/** 
+        - id: driver
+          uri: http://driver:8080
+          predicates:
+            - Path=/drivers/** 
+        - id: payment
+          uri: http://payment:8080
+          predicates:
+            - Path=/payments/** 
+        - id: deliveryList
+          uri: http://deliveryList:8080
+          predicates:
+            - Path= /deliveryLists/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+server:
+  port: 8080
