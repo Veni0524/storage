@@ -38,6 +38,10 @@ logging:
     org.springframework.cloud: debug
 server:
   port: 8081
+feign:
+  client:
+    url:
+      paymentUrl: http://localhost:8083
 ---
 
 spring:
