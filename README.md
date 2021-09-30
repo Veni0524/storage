@@ -110,34 +110,28 @@
 
 ## CQRS
 
-회사가 수익과 콜수를 점검할 수 있는 화면을 CQRS 로 구현한다.
+배달원이 수익과 콜수를 점검할 수 있는 화면을 CQRS 로 구현한다.
 비동기식으로 처리되어 발행된 이벤트 기반 카프카를 통해 수신/처리되어 별도 TABLE 에 관리한다. 
 
-승객이 콜을 하면 승객 ID/ 금액/ 목적지 / 상태 = Called 가 업데이트 된다. 
-운전기사가 수락을 하고 승객을 태우면 상태가 accetped 로 업데이트 된다. 
-운행이 끝나고 운전기사가 종료처리 하면 정산 금액이 업데이트 되고 상태가 completed 로 변경된다.
-
-테이블 모델링 (callList)
-
-![image](https://user-images.githubusercontent.com/84304023/124918416-f85f1e00-e02f-11eb-8c47-553f5124b2b5.png)
+음식점에서 콜을 하면 승객 ID/ 금액/ 목적지 / 상태 = Called 가 업데이트 된다. 
+배달원이 수락을 하고 승객을 태우면 상태가 accetped 로 업데이트 된다. 
+배달이 끝나고 배달원이 종료처리 하면 정산 금액이 업데이트 되고 상태가 completed 로 변경된다.
  
-- viewpage MSA ViewHandler 를 통해 구현 (이벤트 발생 시, Pub/Sub 기반으로 별도 callList 테이블에 저장)
-- call 생성시 승객 id/금액/목적지/상태=called 가 생성됨
+- viewpage MSA ViewHandler 를 통해 구현 (이벤트 발생 시, Pub/Sub 기반으로 별도 deliveryList 테이블에 저장)
+- delivery 생성시 승객 id/금액/목적지/상태=called 가 생성됨
 - 
-![image](https://user-images.githubusercontent.com/84304023/124919004-a9fe4f00-e030-11eb-992b-ea14c31d0700.png)
+![image](https://user-images.githubusercontent.com/88864460/135444043-c28b39b0-23ab-4794-95ed-4a1836c468ea.png)
 
-- 운전기사의 운행이 시작되어 상태가 accepted 로 업데이트 되면 뷰도 업데이트 됨
-- 운전기사의 운행이 완료되어 상태를 completed 로 업데이트 되면 뷰의 상태값과 settle 필드도 업데이트  
+- 배달원의 운행이 시작되어 상태가 accepted 로 업데이트 되면 뷰도 업데이트 됨
+- 배달원의 운행이 완료되어 상태를 completed 로 업데이트 되면 뷰의 상태값과 settle 필드도 업데이트  
 
-![image](https://user-images.githubusercontent.com/84304023/124919111-c8644a80-e030-11eb-9363-ef01a922085c.png)
+![image](https://user-images.githubusercontent.com/88864460/135444140-36449530-4282-4052-ae06-ed6d19e26415.png)
 
 
 
 - 실제로 view 페이지를 조회에서 정보 확인이 가능하다
 
-![image](https://user-images.githubusercontent.com/84304023/124941897-1f284f00-e046-11eb-8a6f-ab46ad5cdaf4.png)
-![image](https://user-images.githubusercontent.com/84304023/124941920-23546c80-e046-11eb-8c08-26795bd3604e.png)
-![image](https://user-images.githubusercontent.com/84304023/124941942-264f5d00-e046-11eb-99a2-ffa0e2caaf4d.png)
+![image](https://user-images.githubusercontent.com/88864460/135444305-f07b3c1c-5cc6-43ae-a594-fda2c69fa4ce.png)
 
   
 
@@ -152,10 +146,10 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: call
-          uri: http://call:8080
+        - id: delivery
+          uri: http://delivery:8080
           predicates:
-            - Path=/calls/** 
+            - Path=/deliveries/** 
         - id: driver
           uri: http://driver:8080
           predicates:
@@ -164,10 +158,10 @@ spring:
           uri: http://payment:8080
           predicates:
             - Path=/payments/** 
-        - id: callList
-          uri: http://callList:8080
+        - id: deliveryList
+          uri: http://deliveryList:8080
           predicates:
-            - Path= /callLists/**
+            - Path= /deliveryLists/**
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -180,7 +174,7 @@ spring:
             allowCredentials: true
 
 server:
-  port: 8080    
+  port: 8080
         
  ``` 
  
@@ -188,86 +182,86 @@ server:
  3.  gateway 생성하고 expose 시 type을 LoadBalancer 로 설정  
    
    ```
-	kubectl create deploy gateway --image 879772956301.dkr.ecr.eu-west-3.amazonaws.com/gateway:v1 -n taxi
-	kubectl expose deploy gateway --type="LoadBalancer" --port=8080 --namespace=taxi
+	kubectl create deploy gateway --image=879772956301.dkr.ecr.ap-northeast-1.amazonaws.com/user07-gateway:v1 -n delivery
+        kubectl expose deploy gateway --type="LoadBalancer" --port=8080 --namespace=delivery
 
    ```     
 
-![image](https://user-images.githubusercontent.com/84304023/124944396-3c5e1d00-e048-11eb-8c2b-75c3b01312c6.png)
+![image](https://user-images.githubusercontent.com/88864460/135444684-d7ec95d7-624b-4fd8-a7fe-2a0ac293c972.png)
 
     
 
 # Correlation
 
-승객이 택시를 호출했을 때, 운전기사가 호출을 수락하여 승객을 태울 때, 운행종료후 운전기사가 콜을 종료처리할 때 
-calllist 상태가 변경된다. 
+음식점에서 배달원을 호출했을 때, 배달원이 호출을 수락하여 음식을 픽업할 때, 운행종료후 배달원이 배달을 종료처리할 때 
+deliverylist 상태가 변경된다. 
 
-1) 승객이 택시를 호출한다
+1) 음식점에서 배달원을 호출한다
 
- http POST http://localhost:8081/calls customerId=1 destination=junja cost=500
+ http POST http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries customerId=1 destination=seoul cost=20000
  
-![image](https://user-images.githubusercontent.com/84304023/124944723-86df9980-e048-11eb-9672-777804c3898a.png)
+![image](https://user-images.githubusercontent.com/88864460/135445059-fd8d98a5-b7c6-4f21-a451-b0fa75ca98d5.png)
 
-1-1) 택시를 호출하면 payment에 callId별로 요금 500이 등록되는데(동기) 이를 확인한다
+1-1) 배달원을 호출하면 payment에 deliveryId별로 요금 20000이 등록되는데(동기) 이를 확인한다
 
-http GET http://localhost:8083/payments/2
+http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/payments
 
-![image](https://user-images.githubusercontent.com/84304023/124944827-9b239680-e048-11eb-96cc-eb491c259e02.png)
+![image](https://user-images.githubusercontent.com/88864460/135445170-bd0769ed-698e-471a-8181-1123996b84c5.png)
 
 1-2) driver정보도 확인한다
 
-http GET http://localhost:8082/drivers/2
+http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/drivers
 
-![image](https://user-images.githubusercontent.com/84304023/124946395-f43ffa00-e049-11eb-8c73-b1338b706a26.png)
+![image](https://user-images.githubusercontent.com/88864460/135445449-523f6363-55ae-4872-bf7f-b4b41d2695f1.png)
 
-1-3) callist 화면도 확인한다.
+1-3) deliveryist 화면도 확인한다.
 
-http GET http://localhost:8084/callLists/2
+http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveryLists
 
-![image](https://user-images.githubusercontent.com/84304023/124944954-b7273800-e048-11eb-954f-9f30efabaa16.png)
-
-
-2) 운전기사가 호출을 수락하여 승객을 태운다.
-
-http PATCH http://localhost:8082/drivers/2 status=Accepted
+![image](https://user-images.githubusercontent.com/88864460/135445525-85b1bcb8-33ac-4b93-b104-d6e8bed5a524.png)
 
 
-![image](https://user-images.githubusercontent.com/84304023/124945032-c5755400-e048-11eb-90e4-f3fd580f55d4.png)
+2) 배달원이 호출을 수락하여 음식을 픽업한다.
+
+http PATCH http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/drivers/1 status="Accepted"
 
 
-2-1)승객의 상태가 변경된다. 
-
-http GET http://localhost:8081/calls/2
+![image](https://user-images.githubusercontent.com/88864460/135445729-02b7a388-9bd1-437d-b6b7-d004b522af55.png)
 
 
-![image](https://user-images.githubusercontent.com/84304023/124945082-cefebc00-e048-11eb-9338-a1837678e131.png)
+2-1) 배달의 상태가 변경된다. 
+
+http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries
 
 
-2-2)Calllist 상태가 변경된다.
-
-http GET http://localhost:8084/callLists/2
-
-![image](https://user-images.githubusercontent.com/84304023/124945134-d8882400-e048-11eb-8479-76b805cdc38d.png)
+![image](https://user-images.githubusercontent.com/88864460/135445900-f7cb994e-6919-4a4d-8c90-338983337ad0.png)
 
 
-3) 탑승이 종료되면 운전기사가 상태를 변경한다.
+2-2)deliverylist 상태가 변경된다.
 
-http PATCH http://localhost:8082/drivers/2 status=Completed
+http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveryLists
 
-![image](https://user-images.githubusercontent.com/84304023/124945204-e473e600-e048-11eb-861d-39ec707a1c1c.png)
+![image](https://user-images.githubusercontent.com/88864460/135446059-3ebdfeef-2609-4f14-944a-a08fa5013681.png)
 
 
-3-1) 승객의 상태가 변경된다.
+3) 배달이 종료되면 배달원이 상태를 변경한다.
 
-http GET http://localhost:8081/calls/2 
+http PATCH http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/drivers/1 status="Completed"
 
-![image](https://user-images.githubusercontent.com/84304023/124945229-eb9af400-e048-11eb-9981-65deed563ae0.png)
+![image](https://user-images.githubusercontent.com/88864460/135446177-031b06a8-889f-4046-9c3c-508c100beed4.png)
 
-3-2) callList 상태가 변경된다. 
 
-http GET http://localhost:8084/callLists/2
+3-1) 배달의 상태가 변경된다.
 
-![image](https://user-images.githubusercontent.com/84304023/124945278-f786b600-e048-11eb-8a97-7ec14c64d417.png)
+http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries
+
+![image](https://user-images.githubusercontent.com/88864460/135446276-bb06e0d0-1875-4f16-95be-a9929d579b85.png)
+
+3-2) deliveryList 상태가 변경된다. 
+
+http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveryLists
+
+![image](https://user-images.githubusercontent.com/88864460/135446418-7d96001c-ebef-45f8-b341-2655b9bf4bff.png)
 
 
 
