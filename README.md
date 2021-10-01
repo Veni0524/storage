@@ -637,19 +637,9 @@ siege -c100 -t60S -v http GET http://a61a63555c8e340cb8dd6b17be45597b-1845340017
 
 - 오토스케일이 어떻게 되고 있는지 모니터링을 걸어둔다 (X)
 ```
-kubectl get deploy payment -w -n taxi 
+kubectl get deploy payment -w -n taxi
 ```
 
 
-
-## Config map 
-
-1.컨피그맵 생성
-
-kubectl apply -f configmap.yml
-![image](https://user-images.githubusercontent.com/84304023/125029729-0f038480-e0c5-11eb-9853-0daae2559779.png)
-
-2.Deployment.yml
-![image](https://user-images.githubusercontent.com/84304023/125030089-820cfb00-e0c5-11eb-8e6f-d0811cb905f2.png)
 
 ...
