@@ -587,12 +587,6 @@ Pod 의 변화를 살펴보기 위하여 watch
 ```
 kubectl get -n delivery po -w
 
-    NAME                           READY   STATUS    RESTARTS   AGE
-    pod/gateway-6449f7459-bcgz6    1/1     Running   0          31m
-    pod/order-74f45d958f-qnnz5     1/1     Running   0          5m48s
-    pod/product-698dd8fcc4-5frqp   1/1     Running   0          42m
-    pod/report-86d9f7b89-knl6h     1/1     Running   0          140m
-    pod/siege                      1/1     Running   0          119m
 ```
 
 서비스를 다운시키기 위한 부하 발생
