@@ -199,7 +199,7 @@ public interface PaymentsRepository extends PagingAndSortingRepository<Payments,
 ```
 - 적용 후 REST API 의 테스트
  
-음식점에서 배달원을 요청하면 배달원(Driver)이 요청 확인 가능
+음식점에서 배달원을 요청하면 payments 확인 가능
 
 http POST http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries customerId=1 destination=seoul cost=20000
 
