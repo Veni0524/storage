@@ -597,48 +597,39 @@ kubectl get -n delivery po -w
 
 서비스를 다운시키기 위한 부하 발생
 ```
-siege -c100 -t60S -r10 -v --content-type "application/json" 'http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries POST {"customerId": "2"}'
+siege -c100 -t60S -r10 -v --content-type "application/json" 'http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries POST {"deliveryId": "2"}'
 ```
 delivery Pod의 liveness 조건 미충족에 의한 RESTARTS 횟수 증가 확인
-```
-kubectl get -n delivery po -w
 
-    NAME                       READY   STATUS              RESTARTS   AGE
-    delivery-74f45d958f-qnnz5     1/1     Running             0          2m6s
-    delivery-74f45d958f-qnnz5     0/1     Running             1          9m28s
-    delivery-74f45d958f-qnnz5     1/1     Running             1          11m
-```
-
+![image](https://user-images.githubusercontent.com/88864460/135557926-f8986eb7-9bc1-44b1-b2f3-9de358f69158.png)
 
 ### 오토스케일 아웃
 앞서 CB 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다. 
 
 - payment deployment.yml 파일에 resources 설정을 추가한다
 
-![image](https://user-images.githubusercontent.com/84304023/125025988-a9ac9500-e0be-11eb-8cbd-9b264702788e.png)
+![image](https://user-images.githubusercontent.com/88864460/135556849-5a2ff01e-03ce-4e69-9fd9-db0b03aa6c9e.png)
 
 
-- payment 서비스에 대한 replica 를 동적으로 늘려주도록 HPA 를 설정한다. 설정은 CPU 사용량이 20프로를 넘어서면 replica 를 3개까지 늘려준다. 
+- delivery 서비스에 대한 replica 를 동적으로 늘려주도록 HPA 를 설정한다. 설정은 CPU 사용량이 5프로를 넘어서면 replica 를 5개까지 늘려준다. 
 ```
-kubectl autoscale deployment payment -n taxi --cpu-percent=20 --min=1 --max=3
+kubectl autoscale deployment payment -n delivery --cpu-percent=5 --min=1 --max=5
+
+```
+![image](https://user-images.githubusercontent.com/88864460/135558037-9e18f971-d524-427e-84d5-ee11b9dddb48.png)
+
+
+- 부하를 동시사용자 100명, 2분 동안 걸어준다.
+```
+siege -c100 -t120S -r10 -v --content-type "application/json" 'http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries POST {"deliveryId": "2"}'
+
 ```
 
-![image](https://user-images.githubusercontent.com/84304023/125026171-fd1ee300-e0be-11eb-9d1b-e4481e102d85.png)
-
-
-- 부하를 동시사용자 100명, 1분 동안 걸어준다.(X)
+- 오토스케일을 모니터링을 통해 확인한다
 ```
-siege -c100 -t60S -v http GET http://a61a63555c8e340cb8dd6b17be45597b-1845340017.eu-west-3.elb.amazonaws.com:8080/payments
+kubectl get deploy delivery -w -n delivery
 ```
-
-![image](https://user-images.githubusercontent.com/84304023/125026409-79b1c180-e0bf-11eb-93c6-5cf7602b8eba.png)
-
-
-
-- 오토스케일이 어떻게 되고 있는지 모니터링을 걸어둔다 (X)
-```
-kubectl get deploy payment -w -n taxi
-```
+![image](https://user-images.githubusercontent.com/88864460/135558170-97b6bc37-1447-4dd8-b0dd-af3d9294f677.png)
 
 
 
