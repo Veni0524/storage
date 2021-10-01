@@ -121,7 +121,7 @@ mvn spring-boot:run
 
 ## DDD 의 적용
 
-- 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다. (예시는 storage 마이크로 서비스). 이때 가능한 현업에서 사용하는 언어 (유비쿼터스 랭귀지)를 그대로 사용하려고 노력했다. 현실에서 발생가능한 이벤트에 의하여 마이크로 서비스들이 상호 작용하기 좋은 모델링으로 구현을 하였다.
+- 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다.
 
 ```
 package delivery;
@@ -191,26 +191,17 @@ public class Payments {
 ```
 package delivery;
 
-import java.util.Optional;
-
-import org.springframework.data.repository.PagingAndSortingRepository;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
-
 @RepositoryRestResource(collectionResourceRel="payments", path="payments")
 public interface PaymentsRepository extends PagingAndSortingRepository<Payments, Long>{
 
     Optional<Payments> findById(Long id);
-}
-
 
 ```
 - 적용 후 REST API 의 테스트
  
- 음식점에서 배달원을 요청하면 배달원(Driver)이 요청 확인 가능 
+음식점에서 배달원을 요청하면 배달원(Driver)이 요청 확인 가능 
 http POST http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries customerId=1 destination=seoul cost=20000
-
 http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries
-
 
 ![image](https://user-images.githubusercontent.com/88864460/135445059-fd8d98a5-b7c6-4f21-a451-b0fa75ca98d5.png)
 ![image](https://user-images.githubusercontent.com/88864460/135445170-bd0769ed-698e-471a-8181-1123996b84c5.png)
