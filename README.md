@@ -119,6 +119,102 @@ mvn spring-boot:run
  
 ```
 
+## DDD 의 적용
+
+- 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다. (예시는 storage 마이크로 서비스). 이때 가능한 현업에서 사용하는 언어 (유비쿼터스 랭귀지)를 그대로 사용하려고 노력했다. 현실에서 발생가능한 이벤트에 의하여 마이크로 서비스들이 상호 작용하기 좋은 모델링으로 구현을 하였다.
+
+```
+package delivery;
+
+import javax.persistence.*;
+import org.springframework.beans.BeanUtils;
+import java.util.List;
+import java.util.Date;
+
+@Entity
+@Table(name="Payments_table")
+public class Payments {
+
+    @Id
+    @GeneratedValue(strategy=GenerationType.AUTO)
+    private Long id;
+    private Long deliveryId;
+    private String destination;
+    private Integer cost;
+
+    @PostPersist
+    public void onPostPersist(){
+        SettledCost settledCost = new SettledCost();
+        BeanUtils.copyProperties(this, settledCost);
+        settledCost.publishAfterCommit();
+
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+    public Long getDeliveryId() {
+        return deliveryId;
+    }
+
+    public void setDeliveryId(Long deliveryId) {
+        this.deliveryId = deliveryId;
+    }
+    public String getDestination() {
+        return destination;
+    }
+
+    public void setDestination(String destination) {
+        this.destination = destination;
+    }
+    public Integer getCost() {
+        return cost;
+    }
+
+    public void setCost(Integer cost) {
+        this.cost = cost;
+    }
+
+
+
+
+}
+
+
+
+```
+- Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용하였다
+```
+package delivery;
+
+import java.util.Optional;
+
+import org.springframework.data.repository.PagingAndSortingRepository;
+import org.springframework.data.rest.core.annotation.RepositoryRestResource;
+
+@RepositoryRestResource(collectionResourceRel="payments", path="payments")
+public interface PaymentsRepository extends PagingAndSortingRepository<Payments, Long>{
+
+    Optional<Payments> findById(Long id);
+}
+
+
+```
+- 적용 후 REST API 의 테스트
+ 
+ 음식점에서 배달원을 요청하면 배달원(Driver)이 요청 확인 가능 
+http POST http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries customerId=1 destination=seoul cost=20000
+
+http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries
+
+
+![image](https://user-images.githubusercontent.com/88864460/135445059-fd8d98a5-b7c6-4f21-a451-b0fa75ca98d5.png)
+![image](https://user-images.githubusercontent.com/88864460/135445170-bd0769ed-698e-471a-8181-1123996b84c5.png)
+
 ## CQRS
 
 배달원이 수익과 콜수를 점검할 수 있는 화면을 CQRS 로 구현한다.
@@ -279,101 +375,7 @@ http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.am
 
 
 
-## DDD 의 적용
 
-- 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다. (예시는 storage 마이크로 서비스). 이때 가능한 현업에서 사용하는 언어 (유비쿼터스 랭귀지)를 그대로 사용하려고 노력했다. 현실에서 발생가능한 이벤트에 의하여 마이크로 서비스들이 상호 작용하기 좋은 모델링으로 구현을 하였다.
-
-```
-package delivery;
-
-import javax.persistence.*;
-import org.springframework.beans.BeanUtils;
-import java.util.List;
-import java.util.Date;
-
-@Entity
-@Table(name="Payments_table")
-public class Payments {
-
-    @Id
-    @GeneratedValue(strategy=GenerationType.AUTO)
-    private Long id;
-    private Long deliveryId;
-    private String destination;
-    private Integer cost;
-
-    @PostPersist
-    public void onPostPersist(){
-        SettledCost settledCost = new SettledCost();
-        BeanUtils.copyProperties(this, settledCost);
-        settledCost.publishAfterCommit();
-
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-    public Long getDeliveryId() {
-        return deliveryId;
-    }
-
-    public void setDeliveryId(Long deliveryId) {
-        this.deliveryId = deliveryId;
-    }
-    public String getDestination() {
-        return destination;
-    }
-
-    public void setDestination(String destination) {
-        this.destination = destination;
-    }
-    public Integer getCost() {
-        return cost;
-    }
-
-    public void setCost(Integer cost) {
-        this.cost = cost;
-    }
-
-
-
-
-}
-
-
-
-```
-- Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용하였다
-```
-package delivery;
-
-import java.util.Optional;
-
-import org.springframework.data.repository.PagingAndSortingRepository;
-import org.springframework.data.rest.core.annotation.RepositoryRestResource;
-
-@RepositoryRestResource(collectionResourceRel="payments", path="payments")
-public interface PaymentsRepository extends PagingAndSortingRepository<Payments, Long>{
-
-    Optional<Payments> findById(Long id);
-}
-
-
-```
-- 적용 후 REST API 의 테스트
- 
- 음식점에서 배달원을 요청하면 배달원(Driver)이 요청 확인 가능 
-http POST http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries customerId=1 destination=seoul cost=20000
-
-http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries
-
-
-![image](https://user-images.githubusercontent.com/88864460/135445059-fd8d98a5-b7c6-4f21-a451-b0fa75ca98d5.png)
-![image](https://user-images.githubusercontent.com/88864460/135445170-bd0769ed-698e-471a-8181-1123996b84c5.png)
 
 
 
