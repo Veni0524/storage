@@ -105,7 +105,17 @@
 (각자의 포트넘버는 로컬에서는 8081 ~ 8084 임)
 
 ```
-  mvn package -Dmaven.test.skip=trun
+cd payment
+mvn spring-boot:run
+
+cd delivery
+mvn spring-boot:run 
+
+cd driver
+mvn spring-boot:run  
+
+cd deliverylist
+ 
 ```
 
 ## CQRS
