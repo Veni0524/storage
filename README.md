@@ -115,6 +115,7 @@ cd driver
 mvn spring-boot:run  
 
 cd deliverylist
+mvn spring-boot:run 
  
 ```
 
