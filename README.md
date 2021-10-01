@@ -208,6 +208,155 @@ http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.am
 ![image](https://user-images.githubusercontent.com/88864460/135445059-fd8d98a5-b7c6-4f21-a451-b0fa75ca98d5.png)
 ![image](https://user-images.githubusercontent.com/88864460/135445170-bd0769ed-698e-471a-8181-1123996b84c5.png)
 
+## 동기식 호출(Sync) 과 Fallback 처리
+
+- 음식점에서 배달원을 호출하면 payment 에 배달정보와 금액이 동기식으로 저장됨  
+- Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출
+
+# Payment.java (Entity)
+
+ ```
+ 
+    @PostPersist
+    public void onPostPersist(){
+        SettledCost settledCost = new SettledCost();
+        BeanUtils.copyProperties(this, settledCost);
+        settledCost.publishAfterCommit();  
+
+```
+
+- 가격 정보를 호출하기 위하여 stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현
+- 
+# PaymentService.java
+
+```
+package delivery.external;
+
+
+@FeignClient(name="payments", url="${feign.client.url.paymentUrl}") //Insert
+public interface PaymentsService {
+    @RequestMapping(method= RequestMethod.GET, path="/payments")
+    public void savePayments(@RequestBody Payments payments);
+
+
+```
+
+음식점에서 배달원 요청 후 payment 에 동기식으로 데이터 발생확인
+
+![image](https://user-images.githubusercontent.com/88864460/135445059-fd8d98a5-b7c6-4f21-a451-b0fa75ca98d5.png)
+![image](https://user-images.githubusercontent.com/88864460/135447785-ee013bb2-7dc1-42fe-9ff6-724347ba43f9.png)
+
+## 비동기식 호출 
+
+배달원이 음식을 싣고 deliveryId 별로 delivery 의 상태를 Accepted로 변경하고 운전을 시작한다.
+
+```
+# Driver.java
+package taxi;
+
+import javax.persistence.*;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.BeansException;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Date;
+
+@Entity
+@Table(name="Driver_table")
+public class Driver {
+
+....
+
+ @PostUpdate
+    public void onPostUpdate() throws Exception {
+    
+    UpdateStatus updateStatus = new UpdateStatus();
+        this.setDeliveryId(deliveryId);
+        BeanUtils.copyProperties(this, updateStatus);
+        updateStatus.publishAfterCommit();
+	
+ }	
+    
+    
+# delivery  - PolicyHandler.java
+package delivery;
+
+import delivery.config.kafka.KafkaProcessor;
+
+import java.util.Optional;
+
+import delivery.config.kafka.KafkaProcessor;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.stream.annotation.StreamListener;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PolicyHandler{
+    @Autowired DeliveryRepository deliveryRepository;
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverUpdateStatus_UpdatedStatus(@Payload UpdateStatus updateStatus){
+
+        if(!updateStatus.validate()) return;
+
+        System.out.println("\n\n##### listener UpdatedStatus : " + updateStatus.toJson() + "\n\n");
+
+
+
+        // Sample Logic //
+        // Delivery delivery = new Delivery();
+        // deliveryRepository.save(delivery);
+        Optional<Delivery> deliveryOptional = deliveryRepository.findById(updateStatus.getDeliveryId());
+        Delivery delivery = deliveryOptional.get();
+        delivery.setStatus(updateStatus.getStatus());
+
+        deliveryRepository.save(delivery);
+
+
+    }
+
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whatever(@Payload String eventString){}
+
+
+}
+
+```
+
+http PATCH http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/drivers/1 status="Accepted"
+
+![image](https://user-images.githubusercontent.com/88864460/135445729-02b7a388-9bd1-437d-b6b7-d004b522af55.png)
+
+http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries
+
+![image](https://user-images.githubusercontent.com/88864460/135445900-f7cb994e-6919-4a4d-8c90-338983337ad0.png)
+
+배달 시스템은 배달원 시스템과 완전히 분리되어 있으며, 이벤트 수신에 따라 처리되기 떄문에, 배달원(driver) 시스템이 유지보수로 인해 잠시 내려간 상태라도
+배달주문을 등록하는데 문제가 없다.
+
+```
+# 배달원 서비스 (driver) 를 잠시 내려놓음
+
+#배달등록
+http POST http://localhost:8082/delivery customerId=1 cost=3500 status=called   #Success
+
+#상품정보 확인
+http GET http://localhost:8082/delivery/1     # 배달상태 called 확인
+
+#드라이버 서비스 기동
+cd driver
+mvn spring-boot:run
+
+#배달서비스의 상태 확인
+http GET http://localhost:8081/products/1     # 배달상태 Accepted로 변경 확인
+
+```
+
 ## CQRS
 
 배달원이 수익과 콜수를 점검할 수 있는 화면을 CQRS 로 구현한다.
@@ -235,7 +384,7 @@ http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.am
 
   
 
-## API 게이트웨이
+## 게이트웨이
 gateway 스프링부트 App을 추가 후 application.yaml내에 각 마이크로 서비스의 routes 를 추가하고 gateway 서버의 포트를 8080 으로 설정함
        
          
@@ -364,166 +513,6 @@ http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.am
 ![image](https://user-images.githubusercontent.com/88864460/135446418-7d96001c-ebef-45f8-b341-2655b9bf4bff.png)
 
 
-
-
-
-
-
-
-
-
-
-## 동기식 호출(Sync) 
-
-- 음식점에서 배달원을 호출하면 payment 에 배달정보와 금액이 동기식으로 저장됨  
-- Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출
-
-```
-# PaymentService.java
-
-
-package delivery.external;
-
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-
-import java.util.Date;
-
-@FeignClient(name="payments", url="${feign.client.url.paymentUrl}") //Insert
-public interface PaymentsService {
-    @RequestMapping(method= RequestMethod.GET, path="/payments")
-    public void savePayments(@RequestBody Payments payments);
-
-}
-
-
-```
-
-- 
-
-```
-# Payment.java (Entity)
-
-   
-    @PostPersist
-    public void onPostPersist(){
-        SettledCost settledCost = new SettledCost();
-        BeanUtils.copyProperties(this, settledCost);
-        settledCost.publishAfterCommit();
-
-    }
-
-```
-
-음식점에서 배달원 요청 후 payment 에 동기식으로 데이터 발생확인
-
-![image](https://user-images.githubusercontent.com/88864460/135445059-fd8d98a5-b7c6-4f21-a451-b0fa75ca98d5.png)
-![image](https://user-images.githubusercontent.com/88864460/135447785-ee013bb2-7dc1-42fe-9ff6-724347ba43f9.png)
-
-
-
-
-
-## 비동기식 호출 
-
-배달원이 음식을 싣고 deliveryId 별로 delivery 의 상태를 Accepted로 변경하고 운전을 시작한다.
-
-
-
-```
-# Driver.java
-package taxi;
-
-import javax.persistence.*;
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.BeansException;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.Date;
-
-@Entity
-@Table(name="Driver_table")
-public class Driver {
-
-....
-
- @PostUpdate
-    public void onPostUpdate() throws Exception {
-    
-    UpdateStatus updateStatus = new UpdateStatus();
-        this.setDeliveryId(deliveryId);
-        BeanUtils.copyProperties(this, updateStatus);
-        updateStatus.publishAfterCommit();
-	
- }	
-    
-    
-# delivery  - PolicyHandler.java
-package delivery;
-
-import delivery.config.kafka.KafkaProcessor;
-
-import java.util.Optional;
-
-import delivery.config.kafka.KafkaProcessor;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.stream.annotation.StreamListener;
-import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.stereotype.Service;
-
-@Service
-public class PolicyHandler{
-    @Autowired DeliveryRepository deliveryRepository;
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverUpdateStatus_UpdatedStatus(@Payload UpdateStatus updateStatus){
-
-        if(!updateStatus.validate()) return;
-
-        System.out.println("\n\n##### listener UpdatedStatus : " + updateStatus.toJson() + "\n\n");
-
-
-
-        // Sample Logic //
-        // Delivery delivery = new Delivery();
-        // deliveryRepository.save(delivery);
-        Optional<Delivery> deliveryOptional = deliveryRepository.findById(updateStatus.getDeliveryId());
-        Delivery delivery = deliveryOptional.get();
-        delivery.setStatus(updateStatus.getStatus());
-
-        deliveryRepository.save(delivery);
-
-
-    }
-
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void whatever(@Payload String eventString){}
-
-
-}
-
-```
-
-http PATCH http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/drivers/1 status="Accepted"
-
-![image](https://user-images.githubusercontent.com/88864460/135445729-02b7a388-9bd1-437d-b6b7-d004b522af55.png)
-
-
-http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries
-
-![image](https://user-images.githubusercontent.com/88864460/135445900-f7cb994e-6919-4a4d-8c90-338983337ad0.png)
-
-
-
-
-
 # 운영
 
 각각의 KUBECTL 명령어로 운영에 빌드하였습니다. 
@@ -574,13 +563,9 @@ kubectl get all -n delivery
 
 kubectl expose deploy payment --type="ClusterIP" --port=8080 --namespace=delivery
 
-
 14. 확인 
 
 ![image](https://user-images.githubusercontent.com/88864460/135444684-d7ec95d7-624b-4fd8-a7fe-2a0ac293c972.png)
-
-
-
 
 
 ## 셀프힐링 livenessProbe 설정
@@ -668,20 +653,3 @@ kubectl apply -f configmap.yml
 ![image](https://user-images.githubusercontent.com/84304023/125030089-820cfb00-e0c5-11eb-8e6f-d0811cb905f2.png)
 
 ...
-
-# Self-healing (Liveness Probe)
-
-
-- payment deployment.yml 파일 수정 
-```
-
-/tmp/healthy 파일이 존재하는지 확인하는 설정파일이다.
-livenessProbe에 'cat /tmp/healthy'으로 검증하도록 함
-파일이 존재하지 않을 경우, 정상 작동에 문제가 있다고 판단되어 kubelet에 의해 자동으로 컨테이너가 재시작 된다
-
-```
-![image](https://user-images.githubusercontent.com/84304023/125010662-e9b14f00-e0a1-11eb-8f32-8fb33aee03d5.png)
-
-
-- kubectl describe pod payment -n taxi  실행은 못함
-
