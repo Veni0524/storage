@@ -588,27 +588,46 @@ kubectl expose deploy payment --type="ClusterIP" --port=8080 --namespace=deliver
 
 
 
-## 모니터링
-1. 메트릭 서버 설치 및 설치확인
+## 셀프힐링 livenessProbe 설정
+1. delivery deployment livenessProbe 
 
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.5.0/components.yaml
+```
+livenessProbe:
+            httpGet:
+              path: '/actuator/health'
+              port: 8080
+            initialDelaySeconds: 120  //초기delay시간
+            timeoutSeconds: 1         //timeout시간내응답점검
+            periodSeconds: 5          //점검주기
+            failureThreshold: 5       //실패5번이후에는 RESTART
+```
+livenessProbe 기능 점검은 HPA적용되지 않은 상태에서 진행한다.
 
-![image](https://user-images.githubusercontent.com/84304023/125011799-16fefc80-e0a4-11eb-9fa3-1b5814630aaa.png)
+Pod 의 변화를 살펴보기 위하여 watch
+```
+kubectl get -n delivery po -w
 
+    NAME                           READY   STATUS    RESTARTS   AGE
+    pod/gateway-6449f7459-bcgz6    1/1     Running   0          31m
+    pod/order-74f45d958f-qnnz5     1/1     Running   0          5m48s
+    pod/product-698dd8fcc4-5frqp   1/1     Running   0          42m
+    pod/report-86d9f7b89-knl6h     1/1     Running   0          140m
+    pod/siege                      1/1     Running   0          119m
+```
 
-2. 모니터링 
- 
-kubectl get nodes
-kubectl describe nodes
+서비스를 다운시키기 위한 부하 발생
+```
+siege -c100 -t60S -r10 -v --content-type "application/json" 'http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.amazonaws.com:8080/deliveries POST {"customerId": "2"}'
+```
+delivery Pod의 liveness 조건 미충족에 의한 RESTARTS 횟수 증가 확인
+```
+kubectl get -n delivery po -w
 
-![image](https://user-images.githubusercontent.com/84304023/125012209-ca67f100-e0a4-11eb-9622-ce3974fd777c.png)
-![image](https://user-images.githubusercontent.com/84304023/125012265-dfdd1b00-e0a4-11eb-8090-5627568a7b3b.png)
-....
-![image](https://user-images.githubusercontent.com/84304023/125012313-f2575480-e0a4-11eb-9a3a-dcaa58d54812.png)
-
-
-
-
+    NAME                       READY   STATUS              RESTARTS   AGE
+    delivery-74f45d958f-qnnz5     1/1     Running             0          2m6s
+    delivery-74f45d958f-qnnz5     0/1     Running             1          9m28s
+    delivery-74f45d958f-qnnz5     1/1     Running             1          11m
+```
 
 
 ### 오토스케일 아웃
