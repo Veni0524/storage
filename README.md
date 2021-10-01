@@ -525,57 +525,53 @@ http GET http://ae8be8b4eed704a01abbfda9c2aaf74f-664416606.ap-northeast-1.elb.am
 
 1.AWS Configure 수행
 
-2.ESK생성
-eksctl create cluster --name user26-eks --version 1.17 --nodegroup-name standard-workers --node-type t3.medium --nodes 4 --nodes-min 1 --nodes-max 4
+2.EKS생성
+
+eksctl create cluster --name user07-eks --version 1.19 --nodegroup-name standard-workers --node-type t3.medium --nodes 4 --nodes-min 1 --nodes-max 4
 
 3.AWS 클러스터 토큰 가져오기
-aws eks --region eu-west-3 update-kubeconfig --name user26-eks
+aws eks --region ap-northeast-1 update-kubeconfig --name user07-eks
 
-4. 매트릭스 서버 설치
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.5.0/components.yaml
-
-5. 각 서비스 MVN
+4. 각 서비스 MVN
 mvn package -Dmaven.test.skip=trun
 
-6. ECR 에서 Repository 생성
-![image](https://user-images.githubusercontent.com/84304023/124966025-bc42b200-e05d-11eb-903e-a0373d6981f5.png)
+5. ECR 에서 Repository 생성
+![image](https://user-images.githubusercontent.com/88864460/135548077-94f8305c-5fc9-4dd9-bfd3-e37e7a788099.png)
 
 
-7. AWS 컨테이너 레지스트리 로그인
-docker login --username AWS -p $(aws ecr get-login-password --region eu-west-3) 879772956301.dkr.ecr.eu-west-3.amazonaws.com/
-
-8. 이름 정의 
-kubectl create ns taxi
+6. AWS 컨테이너 레지스트리 로그인
+docker login --username AWS -p $(aws ecr get-login-password --region ap-northeast-1) 879772956301.dkr.ecr.ap-northeast-1.amazonaws.com/
 
 
-9. 도커 이미지 생성 ( 각서비스별로 생성)
-
-docker build -t 879772956301.dkr.ecr.eu-west-3.amazonaws.com/payment:v1 .
-
-10. 도커 이미지 푸쉬
-docker push 879772956301.dkr.ecr.eu-west-3.amazonaws.com/payment:v1
-
-11. 이미지가 레파지토리에 있는지 확인 
-![image](https://user-images.githubusercontent.com/84304023/124966413-42f78f00-e05e-11eb-9406-8c5d0c53d2f3.png)
+7. 네임스페이스 정의 
+kubectl create ns delivery
 
 
-12.앞서 생산한 taxi 에 pod 를 띄움
-kubectl create deploy payment --image 879772956301.dkr.ecr.eu-west-3.amazonaws.com/payment:v1 -n taxi
+8. 도커 이미지 생성 ( 각서비스별로 생성)
 
-13. 서비스 확인 
-kubectl get all -n taxi
+docker build -t 879772956301.dkr.ecr.ap-northeast-1.amazonaws.com/user07-payment:v1 .
 
-![image](https://user-images.githubusercontent.com/84304023/124966711-923dbf80-e05e-11eb-8f44-5b44c0ce183d.png)
+9. 도커 이미지 푸쉬
+docker push 879772956301.dkr.ecr.ap-northeast-1.amazonaws.com/user07-payment:v1
 
-14. payment 서비스를 올림 
+10. 이미지가 레파지토리에 있는지 확인 
+![image](https://user-images.githubusercontent.com/88864460/135548223-2da4c5dd-acc7-4841-b295-04a7471605dc.png)
 
-kubectl expose deploy payment --type="ClusterIP" --port=8080 --namespace=taxi
 
-![image](https://user-images.githubusercontent.com/84304023/124966795-ac779d80-e05e-11eb-8e54-27947774fd23.png)
+11.Pod deploy
+kubectl create deploy payment --image=879772956301.dkr.ecr.ap-northeast-1.amazonaws.com/user07-payment:v1 -n delivery
 
-15. 운영 반영 완료 후 서비스 
+12. Pod 확인 
+kubectl get all -n delivery
 
-![image](https://user-images.githubusercontent.com/84304023/124966838-b6999c00-e05e-11eb-93ed-9ad9dd2387f3.png)
+13. payment 서비스 expose
+
+kubectl expose deploy payment --type="ClusterIP" --port=8080 --namespace=delivery
+
+
+14. 확인 
+
+![image](https://user-images.githubusercontent.com/88864460/135444684-d7ec95d7-624b-4fd8-a7fe-2a0ac293c972.png)
 
 
 
